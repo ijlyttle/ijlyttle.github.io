@@ -3,3 +3,7 @@
 
 # Example code in package build process
 *-Ex.R
+.Rproj.user
+
+# markdown in stat_585
+stat_585/**/*.md

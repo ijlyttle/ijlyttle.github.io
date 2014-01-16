@@ -1,0 +1,31 @@
+# Week 1
+
+```{r prelim}
+library(knitr)
+
+options(width = 100, str = strOptions(vec.len = 2))
+
+opts_chunk$set(
+  comment = NA, 
+  tidy = FALSE, 
+  fig.align = "center", 
+  fig.width = 10, 
+  fig.height = 6,
+  dev = "png"
+)
+```
+
+
+## Messing around with US Census API
+
+```{r}
+library(cbapi)
+
+# as Heike says, my key - get your own :)
+setkey("94779290e91e4722bea263a56d4bf2b9e3e53313")
+
+url <- "http://api.census.gov/data/2010/sf1?key=%s&get=P0010001,NAME&for=state:*"
+
+popstate <- read.census(sprintf(url, getkey()))
+head(popstate)
+```
