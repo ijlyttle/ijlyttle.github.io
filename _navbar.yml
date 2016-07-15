@@ -1,0 +1,7 @@
+title: 'Wanderings through the Tidyverse'
+right:
+  - text: "Data"
+    menu:
+      - text: "Dictionary"
+        href: data_dictionary.html
+

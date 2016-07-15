@@ -1,0 +1,5 @@
+---
+title: Index
+---
+
+This will be the homepage.
