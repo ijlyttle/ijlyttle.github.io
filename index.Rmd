@@ -1,5 +1,14 @@
 ---
-title: Index
+title: Welcome
 ---
 
 The purpose of this blog or site or whatever is a way for me to reason things out to myself about the Tidyverse - you are very welcome to come along for the ride.
+
+I like to think that this will be a series of trips into both the newer revelations and dustier corners (who doesn't like a good edge case?!).
+
+A big feature of this exercise (whether I like it or not), will be me proclaiming my ignorance to the world. I will be happy to be educated.
+
+The navigation structure you see is more aspirational than anything. I put it here to try to motivate myself to get all this stuff done.
+
+
+

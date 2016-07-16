@@ -1,7 +1,30 @@
 title: 'Wanderings through the Tidyverse'
 right:
-  - text: "Data"
+  - text: "Dimensions"
     menu:
-      - text: "Dictionary"
-        href: data_dictionary.html
+      - text: "Ingest"
+      - text: "Tidy"
+      - text: "Transform"
+      - text: "Visualize"
+      - text: "Model"
+      - text: "Introduction"
+        href: model_introduction.html
+      - text: "Cross-validation: model selection"
+        href: model_cv_selection.html
+      - text: "Bootstrapping: parameter assesment"
+        href: model_bootstrap_parameter.html
+      - text: "Communicate"
+  - text: "Non-dimensions"
+    menu:
+      - text: "Introduction"
+      - text: "Dates and times"
+      - text: "API-client design"
+      - text: "Makefiles for project manangement"
+  - text: "Package portfolio"
+    menu:
+      - text: "vembedr"
+      - text: "bsplus"
+      - text: "shinypod"
+
+      
 

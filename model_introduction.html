@@ -11,7 +11,7 @@
 
 
 
-<title>Welcome</title>
+<title>Introduction</title>
 
 <script src="site_libs/jquery-1.11.3/jquery.min.js"></script>
 <script src="site_libs/jqueryui-1.11.4/jquery-ui.min.js"></script>
@@ -348,15 +348,53 @@ div.tocify {
 
 
 
-<h1 class="title toc-ignore">Welcome</h1>
+<h1 class="title toc-ignore">Introduction</h1>
 
 </div>
 
 
-<p>The purpose of this blog or site or whatever is a way for me to reason things out to myself about the Tidyverse - you are very welcome to come along for the ride.</p>
-<p>I like to think that this will be a series of trips into both the newer revelations and dustier corners (who doesn’t like a good edge case?!).</p>
-<p>A big feature of this exercise (whether I like it or not), will be me proclaiming my ignorance to the world. I will be happy to be educated.</p>
-<p>The navigation structure you see is more aspirational than anything. I put it here to try to motivate myself to get all this stuff done.</p>
+<pre class="r"><code>library(&quot;vembedr&quot;)
+library(&quot;htmltools&quot;)</code></pre>
+<p>For me, statistcal inference is a a tremendously powerful tool, but it requires you to respect all the rules lest the inference be lost. I was not trained as a statistician; for me (as you might expect), inference is an intimidating tool.</p>
+<p>The idea of resampling is very appealing to me. I appreciate that you can answer (albeit somewhat less formally) many of the same questions as you can using inference. As long as you make a good-faith effort not to fool yourself, you can use resampling to get useful answers.</p>
+<div id="references" class="section level2">
+<h2>References</h2>
+<p>This is clearly not a list of academic citations.</p>
+<div id="prof.deborah-nolan" class="section level3">
+<h3>Prof. Deborah Nolan</h3>
+<pre class="r"><code>embed_user2016(&quot;Statistical-Thinking-in-a-Data-Science-Course&quot;) %&gt;%
+  use_start_time(&quot;39m21s&quot;) %&gt;%
+  div(align = &quot;center&quot;)</code></pre>
+<div align="center">
+<iframe src="https://channel9.msdn.com/Events/useR-international-R-User-conference/useR2016/Statistical-Thinking-in-a-Data-Science-Course/player#time=0h39m21s:paused" width="560" height="315" frameborder="0" allowfullscreen=""></iframe>
+</div>
+<p>One of the points that Prof. Nolan makes is that we can investigate the question of significance by using randomization, resampling, and rejection - rather than by using formal statistical inference.</p>
+<p>She also refers to Tim’s Hesterberg’s paper on <a href="http://amstat.tandfonline.com/doi/full/10.1080/00031305.2015.1089789">bootstraping and undergraduate statistics</a>. Also refers to the <a href="http://www.lock5stat.com/index.html">Five Locks</a>.</p>
+</div>
+<div id="broom-package" class="section level3">
+<h3>Broom package</h3>
+<pre class="r"><code>embed_user2016(&quot;broom-Converting-statistical-models-to-tidy-data-frames&quot;) %&gt;%
+  div(align = &quot;center&quot;)</code></pre>
+<div align="center">
+<iframe src="https://channel9.msdn.com/Events/useR-international-R-User-conference/useR2016/broom-Converting-statistical-models-to-tidy-data-frames/player" width="560" height="315" frameborder="0" allowfullscreen=""></iframe>
+</div>
+<p><a href="https://github.com/dgrtwo/broom">GitHub repository</a></p>
+</div>
+<div id="r-for-data-science" class="section level3">
+<h3>R for Data Science</h3>
+<pre class="r"><code>embed_user2016(&quot;Towards-a-grammar-of-interactive-graphics&quot;) %&gt;%
+  use_start_time(&quot;15m15s&quot;) %&gt;%
+  div(align = &quot;center&quot;)</code></pre>
+<div align="center">
+<iframe src="https://channel9.msdn.com/Events/useR-international-R-User-conference/useR2016/Towards-a-grammar-of-interactive-graphics/player#time=0h15m15s:paused" width="560" height="315" frameborder="0" allowfullscreen=""></iframe>
+</div>
+<p><a href="http://r4ds.had.co.nz/">R for Data Science book</a></p>
+</div>
+<div id="introduction-to-statistical-learning" class="section level3">
+<h3>Introduction to Statistical Learning</h3>
+<p>Link to <a href="http://www-bcf.usc.edu/~gareth/ISL/">the book</a></p>
+</div>
+</div>
 
 
 

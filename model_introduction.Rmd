@@ -1,0 +1,51 @@
+---
+title: Introduction
+---
+
+```{r}
+library("vembedr")
+library("htmltools")
+```
+
+For me, statistcal inference is a a tremendously powerful tool, but it requires you to respect all the rules lest the inference be lost. I was not trained as a statistician; for me (as you might expect), inference is an intimidating tool.  
+
+The idea of resampling is very appealing to me. I appreciate that you can answer (albeit somewhat less formally) many of the same questions as you can using inference. As long as you make a good-faith effort not to fool yourself, you can use resampling to get useful answers.
+
+## References
+
+This is clearly not a list of academic citations.
+
+### Prof. Deborah Nolan
+
+```{r}
+embed_user2016("Statistical-Thinking-in-a-Data-Science-Course") %>%
+  use_start_time("39m21s") %>%
+  div(align = "center")
+```
+
+One of the points that Prof. Nolan makes is that we can investigate the question of significance by using randomization, resampling, and rejection - rather than by using formal statistical inference. 
+
+She also refers to Tim's Hesterberg's paper on [bootstraping and undergraduate statistics](http://amstat.tandfonline.com/doi/full/10.1080/00031305.2015.1089789). Also refers to the [Five Locks](http://www.lock5stat.com/index.html).
+
+### Broom package
+
+```{r}
+embed_user2016("broom-Converting-statistical-models-to-tidy-data-frames") %>%
+  div(align = "center")
+```
+
+[GitHub repository](https://github.com/dgrtwo/broom)
+
+### R for Data Science
+
+```{r}
+embed_user2016("Towards-a-grammar-of-interactive-graphics") %>%
+  use_start_time("15m15s") %>%
+  div(align = "center")
+```
+
+[R for Data Science book](http://r4ds.had.co.nz/)
+
+### Introduction to Statistical Learning
+
+Link to [the book](http://www-bcf.usc.edu/~gareth/ISL/)

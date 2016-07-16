@@ -1,0 +1,57 @@
+---
+title: Cross-validation and model-selection
+---
+
+```{r packages}
+library("devtools")
+library("htmltools")
+library("vembedr")
+library("tibble")
+library("ggplot2")
+```
+
+This document is inspired by part of Hadley's keynote at userR! 2016, where he talks about the power of list-columns:
+
+
+
+What I'm trying to do here is to work towards a conceptual (and coding) framework that will drive the nesting of the dataframe. BTW, this is one of the things that I find so appealing about the Tidyverse - we have a clear set concepts with which to build our ideas, and a correspondingly clear implementation in the packages to implement our ideas.
+
+There are two levels of stuff we want to do:
+
+1. Cross-validation of a particular model to get a estimate of its performance. We will do this using a number of different random train/test splits; the estimate of performance for a given model will be an aggregation of the performance of each of the splits.
+
+2. Evaluation of the performance of a number of models - each model will have a different set of features. It is thought that, at first, that all of the models evaluated as a set will have the same family, i.e. `lm()`, but this may not always be the case, as we may be further interested in making a selection from models of different families.
+
+## Linear Regression
+
+Following Hadley's example, we want to create a dataset using the "truth" and "noise" that we specify.
+
+```{r}
+truth <- function(x){
+  1 + 2*x - x^2
+}
+
+noise <- function(x){
+  rnorm(length(x), sd = 0.25)
+}
+
+df <- data_frame(
+  x = runif(n = 100, min = 0, max = 1),
+  y = truth(x) + noise(x)
+)
+```
+
+```{r}
+ggplot(df, aes(x = x, y = y)) +
+  geom_point(alpha = 0.6)
+```
+
+
+## Logistic Regression
+
+
+## Session
+
+```{r}
+session_info()
+```
