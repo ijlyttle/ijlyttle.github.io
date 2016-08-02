@@ -1,53 +1,256 @@
 ---
-title: Cross-validation and model-selection
+title: "Model-selection using cross-validation"
 ---
 
-```{r packages}
+```{r packages, message=FALSE}
 library("devtools")
-library("htmltools")
-library("vembedr")
 library("tibble")
 library("ggplot2")
+library("modelr")
+library("dplyr")
+library("purrr")
+library("tidyr")
+library("pryr")
+
+knitr::opts_chunk$set(comment = "") # put this into a format, once developed
 ```
 
-This document is inspired by part of Hadley's keynote at userR! 2016, where he talks about the power of list-columns:
+There are three type of things we want to do:
 
-
-
-What I'm trying to do here is to work towards a conceptual (and coding) framework that will drive the nesting of the dataframe. BTW, this is one of the things that I find so appealing about the Tidyverse - we have a clear set concepts with which to build our ideas, and a correspondingly clear implementation in the packages to implement our ideas.
-
-There are two levels of stuff we want to do:
-
-1. Cross-validation of a particular model to get a estimate of its performance. We will do this using a number of different random train/test splits; the estimate of performance for a given model will be an aggregation of the performance of each of the splits.
+1. For a given model, make an estimate of its performance. We will do this using cross-validation, employing a number of different random train/test splits; the estimate of performance for a given model will be an aggregation of the performance of each of the splits.
 
 2. Evaluation of the performance of a number of models - each model will have a different set of features. It is thought that, at first, that all of the models evaluated as a set will have the same family, i.e. `lm()`, but this may not always be the case, as we may be further interested in making a selection from models of different families.
 
-## Linear Regression
+3. For a given model (such as the chosen one), we want to make an estimate of how much confidence we should have in the significance of each of its coefficients.
+
+For the first two, we will use cross-validation - for the third we will use boostrapping.
+
+## Linear regression
 
 Following Hadley's example, we want to create a dataset using the "truth" and "noise" that we specify.
 
-```{r}
+The truth function is a simple quadratic:
+
+```{r truth}
 truth <- function(x){
   1 + 2*x - x^2
 }
-
-noise <- function(x){
-  rnorm(length(x), sd = 0.25)
-}
-
-df <- data_frame(
-  x = runif(n = 100, min = 0, max = 1),
-  y = truth(x) + noise(x)
-)
 ```
 
-```{r}
+The noise function is a normal distribution with a nominal standard-deviation.
+
+```{r noise}
+noise <- function(x){
+  rnorm(length(x), sd = 0.1)
+}
+```
+
+We assemble a dataset using a random uniform distribution in $x$; our $y$ is the sum of truth and noise.
+
+```{r data}
+df <- 
+  data_frame(
+    x = runif(n = 100, min = 0, max = 1),
+    y = truth(x) + noise(x)
+  ) %>%
+  print()
+```
+
+Of course, our first step is to visualize the dataset. 
+
+```{r scatter}
 ggplot(df, aes(x = x, y = y)) +
   geom_point(alpha = 0.6)
 ```
 
+This is a special case where we have a single independent variable. This is great for showing the concepts, but I am interested to explore visual tools that I can use to assess models that use multiple independent variables. It seems that focusing on the residual might be a useful place to start.
 
-## Logistic Regression
+### Evaluating a single model
+
+We will start by following Hadley and Garrett, building a dataframe that to contain a number of random splits of our original data into a data to train a model, and data to test a model. We use the the `crossv_mc()` function from the modelr package.
+
+```{r df_split}
+df_split <-
+  df %>%
+  crossv_mc(n = 50) %>%
+  print()
+```
+
+We have 50 sets of splits; let's have a closer look at one of the splits.
+
+```{r}
+str(df_split[1,])
+```
+
+One thing you may notice is that both the train and test elements both *appear* to contain the entire original dataset. In fact, R keeps a single copy of the original dataframe, then uses pointers wherever it is used elsewhere in the session. For more, you can read [this section](http://adv-r.had.co.nz/memory.html#object-size) and how I got some help in [this thread](https://github.com/hadley/modelr/issues/14).
+
+We can demonstrate this using the `object_size()` function in the pryr package. Keep in mind that `df_split` contains 100 references to `df`.
+
+```{r}
+object_size(df)
+object_size(df_split)
+```
+
+The next step is to make a function that takes a dataframe and returns a model. A lot of things will be made easier if you make functions in advance - or make them later so that it appears that you made them in advance (only git will know). In our case, we are going to look at how a linear model, *linear* in $x$. Keep in mind that the "truth" is quadratic in $x$.
+
+```{r function_model_linear}
+# given a dataframe, return a model
+fn_model <- function(df){
+  lm(y ~ x, data = df)
+}
+```
+
+We use the `map()` function from the purrr package to make models based on our training sets and our model function.
+
+```{r df_split_model}
+df_split_model <-
+  df_split %>%
+  mutate(model = map(train, fn_model)) %>%
+  print()
+```
+
+For each train/test split we now have a model associated. Before moving on, there are two issues I have with using the `lm()` function in this context. One is that `lm()` is not, as they say, "data first" - the first argument is a formula, not a dataframe. This makes it less easy to use in this context (requiring a function to wrap it). This problem is being addressed by the ["intubate" package](https://github.com/rbertolusso/intubate). My second issue is that `lm()` saves the entire training dataset for each model, obviating the savings achieved in the previous step.
+
+```{r}
+object_size(df_split_model)
+```
+
+Mine is not the best judgement in this area, but it seems there are a couple of things that could be done - follow the approach used by the ["biglm" package](https://cran.r-project.org/web/packages/biglm/index.html), which uses a lightweight structure to store the model, or perhaps to adapt `lm()` to use a S3 resample object. OK, that second idea is a little unhinged. 
+
+This is all to say that the purpose here is different than the one for which `lm()` was originally written. 
+
+Onwards. For the next step, we need functions to determine, for a given sample and model, the response, the predicted value, and the residual.
+
+```{r}
+# given a dataframe and a model, return a vector of residuals
+sample_prediction <- function(sample, model){
+  
+  df <- as.data.frame(sample)
+  
+  pred <- stats::predict(model, df)
+
+  pred
+}
+
+# this will work for lm, biglm - will have to check for others
+sample_response <- function(sample, model){
+  
+  df <- as.data.frame(sample)
+  
+  var_response <- all.vars(formula(model))[[1]]
+  
+  df[[var_response]]
+}
+```
+
+This next set of steps is a bit ambitious. We want to make a tall dataframe, where the `split` becomes a variable that can take the values `train` or `test`. For each model-split combination, we make a set of predictions and responses. We unnest the dataframe, then for each observation, we calculate the residual.
+
+```{r}
+df_split_resid <- 
+  df_split_model %>%
+  gather(key = split, value = data, train, test) %>%
+  mutate(
+    pred = map2(data, model, sample_prediction),
+    resp = map2(data, model, sample_response)
+  ) %>%
+  select(-model, -data) %>%
+  unnest() %>%
+  mutate(resid = pred - resp) %>%
+  print()
+```
+
+The thing we are interested to do is to compare the performance of models on their trianing sets with their proformance on their test sets. One way we can do this is to make qualitative assesments of the kernel density of the residuals.
+
+```{r}
+ggplot(df_split_resid, aes(x = resid, color = split, group = paste(split, .id))) +
+  stat_density(
+    aes(y = ..density..), 
+    geom = "line", 
+    position = "identity",
+    alpha = 0.3
+  ) +
+  guides(color = guide_legend(override.aes = list(alpha = 1)))
+```
+
+We can see that fitting models that are linear in $x$ to data that are quadratic in $x$ may be problematic. Although the kernel-density estimates for all the training residuals seem consistent one to another, the kernel-density estimates of the test sets seem inconsistent with those for the training sets, and with each other.
+
+We can reduce the data for each training or test set to a single statistic. For regression problems, Hadley likes to use the RMSE, or root-mean-squared error because it gives us a useful first idea of how a given model performs, and it is expressed in the same units as the response.
+
+```{r}
+df_split_rmse <- 
+  df_split_resid %>%
+  group_by(.id, split) %>%
+  summarize(
+    rmse = sqrt(sum(resid*resid)/length(resid))
+  ) %>%
+  ungroup() %>%
+  print()
+```
+
+We can visualize this summary.
+
+```{r}
+ggplot(df_split_rmse, aes(x = "linear", y = rmse)) +
+  geom_point(
+    aes(color = split), 
+    position = position_jitterdodge(jitter.width = 0.2, dodge.width = 0.5),
+    alpha = 0.75
+  ) +
+  ylim(0, NA) +
+  guides(color = guide_legend(override.aes = list(alpha = 1)))
+```
+
+We can see some differences in the behavior of the test data, compared with the training data. It would be much more useful  to make these comparisons for different models.
+
+### Multiple models
+
+The first thing we will need to do is to make a list of functions, each one to return a different model. 
+
+We are going to do is create a function that, given the order of the polynomial, returns a function to make that model (given some data). Got it?
+
+```{r}
+make_model <- function(order){
+  
+  # superstition (maybe) to evaluate the expression, preserving it
+  # in this environment for the function
+  order
+  
+  function(df){
+    lm(y ~ poly(x, order), data = df)
+  }
+}
+```
+
+Now we can make a dataframe of models and give each an appropriate name. The `frame_data()` function in the "tibble" package can be useful for making row-wise (artisnal) dataframes.
+
+```{r}
+df_model <-
+  frame_data(
+    ~model_name, ~model_creator,
+    "zero", make_model(0),
+    "one", make_model(1),
+    "two", make_model(2),
+    "three", make_model(3),
+    "four", make_model(4),
+    "five",  make_model(5)
+  ) %>% 
+  print()
+```
+
+Note to self, it would be interesting to have a function that takes a model as an input and returns a metric of complexity. Could be useful later.
+
+Let's join this model dataframe to the split-sample dataframe.
+
+```{r}
+df_sample_model <- 
+  expand.grid(.id = df_split$.id, model_name = df_model$model_name, stringsAsFactors = FALSE) %>%
+  as_data_frame() %>%
+  left_join(df_split, by = ".id") %>%
+  left_join(df_model, by = "model_name") %>%
+  print()
+```
+
+## Logistic regression
 
 
 ## Session

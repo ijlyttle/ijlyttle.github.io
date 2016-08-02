@@ -9,9 +9,9 @@ right:
       - text: "Model"
       - text: "Introduction"
         href: model_introduction.html
-      - text: "Cross-validation: model selection"
+      - text: "Model-selection using cross-validation"
         href: model_cv_selection.html
-      - text: "Bootstrapping: parameter assesment"
+      - text: "Parameter-assessment using bootstrapping"
         href: model_bootstrap_parameter.html
       - text: "Communicate"
   - text: "Non-dimensions"
@@ -20,11 +20,14 @@ right:
       - text: "Dates and times"
       - text: "API-client design"
       - text: "Makefiles for project manangement"
+      - text: "Custom R Markdown formats"
   - text: "Package portfolio"
     menu:
       - text: "vembedr"
       - text: "bsplus"
       - text: "shinypod"
+      - text: "humidr"
+      - text: "groundTemp"
 
       
 

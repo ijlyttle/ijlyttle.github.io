@@ -2,13 +2,15 @@
 title: Welcome
 ---
 
-The purpose of this blog or site or whatever is a way for me to reason things out to myself about the Tidyverse - you are very welcome to come along for the ride.
+The purpose of this blog or site or whatever is a way for me to reason things out to myself about the Tidyverse - you are very welcome to come along for the ride. 
 
-I like to think that this will be a series of trips into both the newer revelations and dustier corners (who doesn't like a good edge case?!).
+A lot of this is based on the R4DS book being written by Hadley Wickham and Garrett Grolemund - in many ways this book is my starting point. I like to think that this will be a series of trips into both the newer revelations and dustier corners (who doesn't like a good edge case?!).
 
 A big feature of this exercise (whether I like it or not), will be me proclaiming my ignorance to the world. I will be happy to be educated.
 
 The navigation structure you see is more aspirational than anything. I put it here to try to motivate myself to get all this stuff done.
+
+Note to Hadley and Garrett - if there is anything here you find objectionable, please let me know and I will remove it. On the off chance that you find something here useful, please use it.
 
 
 

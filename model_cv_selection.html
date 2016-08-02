@@ -11,7 +11,7 @@
 
 
 
-<title>Cross-validation and model-selection</title>
+<title>Model-selection using cross-validation</title>
 
 <script src="site_libs/jquery-1.11.3/jquery.min.js"></script>
 <script src="site_libs/jqueryui-1.11.4/jquery-ui.min.js"></script>
@@ -298,10 +298,10 @@ div.tocify {
       <a href="model_introduction.html">Introduction</a>
     </li>
     <li>
-      <a href="model_cv_selection.html">Cross-validation: model selection</a>
+      <a href="model_cv_selection.html">Model-selection using cross-validation</a>
     </li>
     <li>
-      <a href="model_bootstrap_parameter.html">Bootstrapping: parameter assesment</a>
+      <a href="model_bootstrap_parameter.html">Parameter-assessment using bootstrapping</a>
     </li>
     <li class="dropdown-header">Communicate</li>
   </ul>
@@ -317,6 +317,7 @@ div.tocify {
     <li class="dropdown-header">Dates and times</li>
     <li class="dropdown-header">API-client design</li>
     <li class="dropdown-header">Makefiles for project manangement</li>
+    <li class="dropdown-header">Custom R Markdown formats</li>
   </ul>
 </li>
 <li class="dropdown">
@@ -329,6 +330,8 @@ div.tocify {
     <li class="dropdown-header">vembedr</li>
     <li class="dropdown-header">bsplus</li>
     <li class="dropdown-header">shinypod</li>
+    <li class="dropdown-header">humidr</li>
+    <li class="dropdown-header">groundTemp</li>
   </ul>
 </li>
       </ul>
@@ -348,84 +351,339 @@ div.tocify {
 
 
 
-<h1 class="title toc-ignore">Cross-validation and model-selection</h1>
+<h1 class="title toc-ignore">Model-selection using cross-validation</h1>
 
 </div>
 
 
 <pre class="r"><code>library(&quot;devtools&quot;)
-library(&quot;htmltools&quot;)
-library(&quot;vembedr&quot;)
 library(&quot;tibble&quot;)
-library(&quot;ggplot2&quot;)</code></pre>
-<p>This document is inspired by part of Hadley’s keynote at userR! 2016, where he talks about the power of list-columns:</p>
-<p>What I’m trying to do here is to work towards a conceptual (and coding) framework that will drive the nesting of the dataframe. BTW, this is one of the things that I find so appealing about the Tidyverse - we have a clear set concepts with which to build our ideas, and a correspondingly clear implementation in the packages to implement our ideas.</p>
-<p>There are two levels of stuff we want to do:</p>
+library(&quot;ggplot2&quot;)
+library(&quot;modelr&quot;)
+library(&quot;dplyr&quot;)
+library(&quot;purrr&quot;)
+library(&quot;tidyr&quot;)
+library(&quot;pryr&quot;)
+
+knitr::opts_chunk$set(comment = &quot;&quot;) # put this into a format, once developed</code></pre>
+<p>There are three type of things we want to do:</p>
 <ol style="list-style-type: decimal">
-<li><p>Cross-validation of a particular model to get a estimate of its performance. We will do this using a number of different random train/test splits; the estimate of performance for a given model will be an aggregation of the performance of each of the splits.</p></li>
+<li><p>For a given model, make an estimate of its performance. We will do this using cross-validation, employing a number of different random train/test splits; the estimate of performance for a given model will be an aggregation of the performance of each of the splits.</p></li>
 <li><p>Evaluation of the performance of a number of models - each model will have a different set of features. It is thought that, at first, that all of the models evaluated as a set will have the same family, i.e. <code>lm()</code>, but this may not always be the case, as we may be further interested in making a selection from models of different families.</p></li>
+<li><p>For a given model (such as the chosen one), we want to make an estimate of how much confidence we should have in the significance of each of its coefficients.</p></li>
 </ol>
+<p>For the first two, we will use cross-validation - for the third we will use boostrapping.</p>
 <div id="linear-regression" class="section level2">
-<h2>Linear Regression</h2>
+<h2>Linear regression</h2>
 <p>Following Hadley’s example, we want to create a dataset using the “truth” and “noise” that we specify.</p>
+<p>The truth function is a simple quadratic:</p>
 <pre class="r"><code>truth &lt;- function(x){
   1 + 2*x - x^2
-}
-
-noise &lt;- function(x){
-  rnorm(length(x), sd = 0.25)
-}
-
-df &lt;- data_frame(
-  x = runif(n = 100, min = 0, max = 1),
-  y = truth(x) + noise(x)
-)</code></pre>
+}</code></pre>
+<p>The noise function is a normal distribution with a nominal standard-deviation.</p>
+<pre class="r"><code>noise &lt;- function(x){
+  rnorm(length(x), sd = 0.1)
+}</code></pre>
+<p>We assemble a dataset using a random uniform distribution in <span class="math inline">\(x\)</span>; our <span class="math inline">\(y\)</span> is the sum of truth and noise.</p>
+<pre class="r"><code>df &lt;- 
+  data_frame(
+    x = runif(n = 100, min = 0, max = 1),
+    y = truth(x) + noise(x)
+  ) %&gt;%
+  print()</code></pre>
+<pre><code># A tibble: 100 x 2
+           x        y
+       &lt;dbl&gt;    &lt;dbl&gt;
+1  0.8927719 2.046467
+2  0.5215310 1.902777
+3  0.4711459 1.522086
+4  0.5925818 1.853393
+5  0.1428777 1.283034
+6  0.1544853 1.252456
+7  0.4498071 1.644448
+8  0.4056813 1.586462
+9  0.4060954 1.465173
+10 0.4662933 1.827002
+# ... with 90 more rows</code></pre>
+<p>Of course, our first step is to visualize the dataset.</p>
 <pre class="r"><code>ggplot(df, aes(x = x, y = y)) +
   geom_point(alpha = 0.6)</code></pre>
-<p><img src="model_cv_selection_files/figure-html/unnamed-chunk-2-1.png" width="672" /></p>
+<p><img src="model_cv_selection_files/figure-html/scatter-1.png" width="672" /></p>
+<p>This is a special case where we have a single independent variable. This is great for showing the concepts, but I am interested to explore visual tools that I can use to assess models that use multiple independent variables. It seems that focusing on the residual might be a useful place to start.</p>
+<div id="evaluating-a-single-model" class="section level3">
+<h3>Evaluating a single model</h3>
+<p>We will start by following Hadley and Garrett, building a dataframe that to contain a number of random splits of our original data into a data to train a model, and data to test a model. We use the the <code>crossv_mc()</code> function from the modelr package.</p>
+<pre class="r"><code>df_split &lt;-
+  df %&gt;%
+  crossv_mc(n = 50) %&gt;%
+  print()</code></pre>
+<pre><code># A tibble: 50 x 3
+            train           test   .id
+           &lt;list&gt;         &lt;list&gt; &lt;chr&gt;
+1  &lt;S3: resample&gt; &lt;S3: resample&gt;    01
+2  &lt;S3: resample&gt; &lt;S3: resample&gt;    02
+3  &lt;S3: resample&gt; &lt;S3: resample&gt;    03
+4  &lt;S3: resample&gt; &lt;S3: resample&gt;    04
+5  &lt;S3: resample&gt; &lt;S3: resample&gt;    05
+6  &lt;S3: resample&gt; &lt;S3: resample&gt;    06
+7  &lt;S3: resample&gt; &lt;S3: resample&gt;    07
+8  &lt;S3: resample&gt; &lt;S3: resample&gt;    08
+9  &lt;S3: resample&gt; &lt;S3: resample&gt;    09
+10 &lt;S3: resample&gt; &lt;S3: resample&gt;    10
+# ... with 40 more rows</code></pre>
+<p>We have 50 sets of splits; let’s have a closer look at one of the splits.</p>
+<pre class="r"><code>str(df_split[1,])</code></pre>
+<pre><code>Classes &#39;tbl_df&#39;, &#39;tbl&#39; and &#39;data.frame&#39;:   1 obs. of  3 variables:
+ $ train:List of 1
+  ..$ :List of 2
+  .. ..$ data:Classes &#39;tbl_df&#39;, &#39;tbl&#39; and &#39;data.frame&#39;: 100 obs. of  2 variables:
+  .. .. ..$ x: num  0.893 0.522 0.471 0.593 0.143 ...
+  .. .. ..$ y: num  2.05 1.9 1.52 1.85 1.28 ...
+  .. ..$ idx : int  1 2 3 4 5 6 8 10 11 13 ...
+  .. ..- attr(*, &quot;class&quot;)= chr &quot;resample&quot;
+ $ test :List of 1
+  ..$ :List of 2
+  .. ..$ data:Classes &#39;tbl_df&#39;, &#39;tbl&#39; and &#39;data.frame&#39;: 100 obs. of  2 variables:
+  .. .. ..$ x: num  0.893 0.522 0.471 0.593 0.143 ...
+  .. .. ..$ y: num  2.05 1.9 1.52 1.85 1.28 ...
+  .. ..$ idx : int  7 9 12 20 27 30 32 35 36 38 ...
+  .. ..- attr(*, &quot;class&quot;)= chr &quot;resample&quot;
+ $ .id  : chr &quot;01&quot;</code></pre>
+<p>One thing you may notice is that both the train and test elements both <em>appear</em> to contain the entire original dataset. In fact, R keeps a single copy of the original dataframe, then uses pointers wherever it is used elsewhere in the session. For more, you can read <a href="http://adv-r.had.co.nz/memory.html#object-size">this section</a> and how I got some help in <a href="https://github.com/hadley/modelr/issues/14">this thread</a>.</p>
+<p>We can demonstrate this using the <code>object_size()</code> function in the pryr package. Keep in mind that <code>df_split</code> contains 100 references to <code>df</code>.</p>
+<pre class="r"><code>object_size(df)</code></pre>
+<pre><code>2.5 kB</code></pre>
+<pre class="r"><code>object_size(df_split)</code></pre>
+<pre><code>55.8 kB</code></pre>
+<p>The next step is to make a function that takes a dataframe and returns a model. A lot of things will be made easier if you make functions in advance - or make them later so that it appears that you made them in advance (only git will know). In our case, we are going to look at how a linear model, <em>linear</em> in <span class="math inline">\(x\)</span>. Keep in mind that the “truth” is quadratic in <span class="math inline">\(x\)</span>.</p>
+<pre class="r"><code># given a dataframe, return a model
+fn_model &lt;- function(df){
+  lm(y ~ x, data = df)
+}</code></pre>
+<p>We use the <code>map()</code> function from the purrr package to make models based on our training sets and our model function.</p>
+<pre class="r"><code>df_split_model &lt;-
+  df_split %&gt;%
+  mutate(model = map(train, fn_model)) %&gt;%
+  print()</code></pre>
+<pre><code># A tibble: 50 x 4
+            train           test   .id    model
+           &lt;list&gt;         &lt;list&gt; &lt;chr&gt;   &lt;list&gt;
+1  &lt;S3: resample&gt; &lt;S3: resample&gt;    01 &lt;S3: lm&gt;
+2  &lt;S3: resample&gt; &lt;S3: resample&gt;    02 &lt;S3: lm&gt;
+3  &lt;S3: resample&gt; &lt;S3: resample&gt;    03 &lt;S3: lm&gt;
+4  &lt;S3: resample&gt; &lt;S3: resample&gt;    04 &lt;S3: lm&gt;
+5  &lt;S3: resample&gt; &lt;S3: resample&gt;    05 &lt;S3: lm&gt;
+6  &lt;S3: resample&gt; &lt;S3: resample&gt;    06 &lt;S3: lm&gt;
+7  &lt;S3: resample&gt; &lt;S3: resample&gt;    07 &lt;S3: lm&gt;
+8  &lt;S3: resample&gt; &lt;S3: resample&gt;    08 &lt;S3: lm&gt;
+9  &lt;S3: resample&gt; &lt;S3: resample&gt;    09 &lt;S3: lm&gt;
+10 &lt;S3: resample&gt; &lt;S3: resample&gt;    10 &lt;S3: lm&gt;
+# ... with 40 more rows</code></pre>
+<p>For each train/test split we now have a model associated. Before moving on, there are two issues I have with using the <code>lm()</code> function in this context. One is that <code>lm()</code> is not, as they say, “data first” - the first argument is a formula, not a dataframe. This makes it less easy to use in this context (requiring a function to wrap it). This problem is being addressed by the <a href="https://github.com/rbertolusso/intubate">“intubate” package</a>. My second issue is that <code>lm()</code> saves the entire training dataset for each model, obviating the savings achieved in the previous step.</p>
+<pre class="r"><code>object_size(df_split_model)</code></pre>
+<pre><code>618 kB</code></pre>
+<p>Mine is not the best judgement in this area, but it seems there are a couple of things that could be done - follow the approach used by the <a href="https://cran.r-project.org/web/packages/biglm/index.html">“biglm” package</a>, which uses a lightweight structure to store the model, or perhaps to adapt <code>lm()</code> to use a S3 resample object. OK, that second idea is a little unhinged.</p>
+<p>This is all to say that the purpose here is different than the one for which <code>lm()</code> was originally written.</p>
+<p>Onwards. For the next step, we need functions to determine, for a given sample and model, the response, the predicted value, and the residual.</p>
+<pre class="r"><code># given a dataframe and a model, return a vector of residuals
+sample_prediction &lt;- function(sample, model){
+  
+  df &lt;- as.data.frame(sample)
+  
+  pred &lt;- stats::predict(model, df)
+
+  pred
+}
+
+# this will work for lm, biglm - will have to check for others
+sample_response &lt;- function(sample, model){
+  
+  df &lt;- as.data.frame(sample)
+  
+  var_response &lt;- all.vars(formula(model))[[1]]
+  
+  df[[var_response]]
+}</code></pre>
+<p>This next set of steps is a bit ambitious. We want to make a tall dataframe, where the <code>split</code> becomes a variable that can take the values <code>train</code> or <code>test</code>. For each model-split combination, we make a set of predictions and responses. We unnest the dataframe, then for each observation, we calculate the residual.</p>
+<pre class="r"><code>df_split_resid &lt;- 
+  df_split_model %&gt;%
+  gather(key = split, value = data, train, test) %&gt;%
+  mutate(
+    pred = map2(data, model, sample_prediction),
+    resp = map2(data, model, sample_response)
+  ) %&gt;%
+  select(-model, -data) %&gt;%
+  unnest() %&gt;%
+  mutate(resid = pred - resp) %&gt;%
+  print()</code></pre>
+<pre><code># A tibble: 5,000 x 5
+     .id split     pred     resp        resid
+   &lt;chr&gt; &lt;chr&gt;    &lt;dbl&gt;    &lt;dbl&gt;        &lt;dbl&gt;
+1     01 train 2.051176 2.046467  0.004709138
+2     01 train 1.701208 1.902777 -0.201568278
+3     01 train 1.653710 1.522086  0.131624137
+4     01 train 1.768188 1.853393 -0.085205587
+5     01 train 1.344253 1.283034  0.061218773
+6     01 train 1.355195 1.252456  0.102738652
+7     01 train 1.591997 1.586462  0.005534927
+8     01 train 1.649136 1.827002 -0.177866032
+9     01 train 1.382865 1.238150  0.144714047
+10    01 train 1.665857 1.783083 -0.117225545
+# ... with 4,990 more rows</code></pre>
+<p>The thing we are interested to do is to compare the performance of models on their trianing sets with their proformance on their test sets. One way we can do this is to make qualitative assesments of the kernel density of the residuals.</p>
+<pre class="r"><code>ggplot(df_split_resid, aes(x = resid, color = split, group = paste(split, .id))) +
+  stat_density(
+    aes(y = ..density..), 
+    geom = &quot;line&quot;, 
+    position = &quot;identity&quot;,
+    alpha = 0.3
+  ) +
+  guides(color = guide_legend(override.aes = list(alpha = 1)))</code></pre>
+<p><img src="model_cv_selection_files/figure-html/unnamed-chunk-6-1.png" width="672" /></p>
+<p>We can see that fitting models that are linear in <span class="math inline">\(x\)</span> to data that are quadratic in <span class="math inline">\(x\)</span> may be problematic. Although the kernel-density estimates for all the training residuals seem consistent one to another, the kernel-density estimates of the test sets seem inconsistent with those for the training sets, and with each other.</p>
+<p>We can reduce the data for each training or test set to a single statistic. For regression problems, Hadley likes to use the RMSE, or root-mean-squared error because it gives us a useful first idea of how a given model performs, and it is expressed in the same units as the response.</p>
+<pre class="r"><code>df_split_rmse &lt;- 
+  df_split_resid %&gt;%
+  group_by(.id, split) %&gt;%
+  summarize(
+    rmse = sqrt(sum(resid*resid)/length(resid))
+  ) %&gt;%
+  ungroup() %&gt;%
+  print()</code></pre>
+<pre><code># A tibble: 100 x 3
+     .id split       rmse
+   &lt;chr&gt; &lt;chr&gt;      &lt;dbl&gt;
+1     01  test 0.09471402
+2     01 train 0.12035975
+3     02  test 0.10187266
+4     02 train 0.11923916
+5     03  test 0.10918876
+6     03 train 0.11693297
+7     04  test 0.12322093
+8     04 train 0.11332477
+9     05  test 0.11603920
+10    05 train 0.11516445
+# ... with 90 more rows</code></pre>
+<p>We can visualize this summary.</p>
+<pre class="r"><code>ggplot(df_split_rmse, aes(x = &quot;linear&quot;, y = rmse)) +
+  geom_point(
+    aes(color = split), 
+    position = position_jitterdodge(jitter.width = 0.2, dodge.width = 0.5),
+    alpha = 0.75
+  ) +
+  ylim(0, NA) +
+  guides(color = guide_legend(override.aes = list(alpha = 1)))</code></pre>
+<p><img src="model_cv_selection_files/figure-html/unnamed-chunk-8-1.png" width="672" /></p>
+<p>We can see some differences in the behavior of the test data, compared with the training data. It would be much more useful to make these comparisons for different models.</p>
+</div>
+<div id="multiple-models" class="section level3">
+<h3>Multiple models</h3>
+<p>The first thing we will need to do is to make a list of functions, each one to return a different model.</p>
+<p>We are going to do is create a function that, given the order of the polynomial, returns a function to make that model (given some data). Got it?</p>
+<pre class="r"><code>make_model &lt;- function(order){
+  
+  # superstition (maybe) to evaluate the expression, preserving it
+  # in this environment for the function
+  order
+  
+  function(df){
+    lm(y ~ poly(x, order), data = df)
+  }
+}</code></pre>
+<p>Now we can make a dataframe of models and give each an appropriate name. The <code>frame_data()</code> function in the “tibble” package can be useful for making row-wise (artisnal) dataframes.</p>
+<pre class="r"><code>df_model &lt;-
+  frame_data(
+    ~model_name, ~model_creator,
+    &quot;zero&quot;, make_model(0),
+    &quot;one&quot;, make_model(1),
+    &quot;two&quot;, make_model(2),
+    &quot;three&quot;, make_model(3),
+    &quot;four&quot;, make_model(4),
+    &quot;five&quot;,  make_model(5)
+  ) %&gt;% 
+  print()</code></pre>
+<pre><code># A tibble: 6 x 2
+  model_name model_creator
+       &lt;chr&gt;        &lt;list&gt;
+1       zero         &lt;fun&gt;
+2        one         &lt;fun&gt;
+3        two         &lt;fun&gt;
+4      three         &lt;fun&gt;
+5       four         &lt;fun&gt;
+6       five         &lt;fun&gt;</code></pre>
+<p>Note to self, it would be interesting to have a function that takes a model as an input and returns a metric of complexity. Could be useful later.</p>
+<p>Let’s join this model dataframe to the split-sample dataframe.</p>
+<pre class="r"><code>df_sample_model &lt;- 
+  expand.grid(.id = df_split$.id, model_name = df_model$model_name, stringsAsFactors = FALSE) %&gt;%
+  as_data_frame() %&gt;%
+  left_join(df_split, by = &quot;.id&quot;) %&gt;%
+  left_join(df_model, by = &quot;model_name&quot;) %&gt;%
+  print()</code></pre>
+<pre><code># A tibble: 300 x 5
+     .id model_name          train           test model_creator
+   &lt;chr&gt;      &lt;chr&gt;         &lt;list&gt;         &lt;list&gt;        &lt;list&gt;
+1     01       zero &lt;S3: resample&gt; &lt;S3: resample&gt;         &lt;fun&gt;
+2     02       zero &lt;S3: resample&gt; &lt;S3: resample&gt;         &lt;fun&gt;
+3     03       zero &lt;S3: resample&gt; &lt;S3: resample&gt;         &lt;fun&gt;
+4     04       zero &lt;S3: resample&gt; &lt;S3: resample&gt;         &lt;fun&gt;
+5     05       zero &lt;S3: resample&gt; &lt;S3: resample&gt;         &lt;fun&gt;
+6     06       zero &lt;S3: resample&gt; &lt;S3: resample&gt;         &lt;fun&gt;
+7     07       zero &lt;S3: resample&gt; &lt;S3: resample&gt;         &lt;fun&gt;
+8     08       zero &lt;S3: resample&gt; &lt;S3: resample&gt;         &lt;fun&gt;
+9     09       zero &lt;S3: resample&gt; &lt;S3: resample&gt;         &lt;fun&gt;
+10    10       zero &lt;S3: resample&gt; &lt;S3: resample&gt;         &lt;fun&gt;
+# ... with 290 more rows</code></pre>
+</div>
 </div>
 <div id="logistic-regression" class="section level2">
-<h2>Logistic Regression</h2>
+<h2>Logistic regression</h2>
 </div>
 <div id="session" class="section level2">
 <h2>Session</h2>
 <pre class="r"><code>session_info()</code></pre>
-<pre><code>## Session info --------------------------------------------------------------</code></pre>
-<pre><code>##  setting  value                       
-##  version  R version 3.3.1 (2016-06-21)
-##  system   x86_64, darwin13.4.0        
-##  ui       X11                         
-##  language (EN)                        
-##  collate  en_US.UTF-8                 
-##  tz       America/Chicago             
-##  date     2016-07-16</code></pre>
-<pre><code>## Packages ------------------------------------------------------------------</code></pre>
-<pre><code>##  package    * version date       source        
-##  assertthat   0.1     2013-12-06 CRAN (R 3.3.0)
-##  colorspace   1.2-6   2015-03-11 CRAN (R 3.3.0)
-##  devtools   * 1.12.0  2016-06-24 CRAN (R 3.3.0)
-##  digest       0.6.9   2016-01-08 CRAN (R 3.3.0)
-##  evaluate     0.9     2016-04-29 CRAN (R 3.3.0)
-##  formatR      1.4     2016-05-09 CRAN (R 3.3.0)
-##  ggplot2    * 2.1.0   2016-03-01 CRAN (R 3.3.0)
-##  gtable       0.2.0   2016-02-26 CRAN (R 3.3.0)
-##  htmltools  * 0.3.5   2016-03-21 CRAN (R 3.3.0)
-##  knitr        1.13    2016-05-09 CRAN (R 3.3.0)
-##  labeling     0.3     2014-08-23 CRAN (R 3.3.0)
-##  lazyeval     0.2.0   2016-06-12 CRAN (R 3.3.0)
-##  magrittr     1.5     2014-11-22 CRAN (R 3.3.0)
-##  memoise      1.0.0   2016-01-29 CRAN (R 3.3.0)
-##  munsell      0.4.3   2016-02-13 CRAN (R 3.3.0)
-##  plyr         1.8.4   2016-06-08 cran (@1.8.4) 
-##  Rcpp         0.12.5  2016-05-14 CRAN (R 3.3.0)
-##  rmarkdown    1.0     2016-07-08 CRAN (R 3.3.0)
-##  scales       0.4.0   2016-02-26 CRAN (R 3.3.0)
-##  stringi      1.1.1   2016-05-27 CRAN (R 3.3.0)
-##  stringr      1.0.0   2015-04-30 CRAN (R 3.3.0)
-##  tibble     * 1.1     2016-07-04 cran (@1.1)   
-##  vembedr    * 0.1.1   2016-07-15 CRAN (R 3.3.1)
-##  withr        1.0.2   2016-06-20 CRAN (R 3.3.0)
-##  yaml         2.1.13  2014-06-12 CRAN (R 3.3.0)</code></pre>
+<pre><code>Session info --------------------------------------------------------------</code></pre>
+<pre><code> setting  value                       
+ version  R version 3.3.1 (2016-06-21)
+ system   x86_64, darwin13.4.0        
+ ui       X11                         
+ language (EN)                        
+ collate  en_US.UTF-8                 
+ tz       America/Chicago             
+ date     2016-08-02                  </code></pre>
+<pre><code>Packages ------------------------------------------------------------------</code></pre>
+<pre><code> package    * version    date       source                
+ assertthat   0.1        2013-12-06 CRAN (R 3.3.0)        
+ codetools    0.2-14     2015-07-15 CRAN (R 3.3.1)        
+ colorspace   1.2-6      2015-03-11 CRAN (R 3.3.0)        
+ DBI          0.4-1      2016-05-08 CRAN (R 3.3.0)        
+ devtools   * 1.12.0     2016-06-24 CRAN (R 3.3.0)        
+ digest       0.6.9      2016-01-08 CRAN (R 3.3.0)        
+ dplyr      * 0.5.0      2016-06-24 cran (@0.5.0)         
+ evaluate     0.9        2016-04-29 CRAN (R 3.3.0)        
+ formatR      1.4        2016-05-09 CRAN (R 3.3.0)        
+ ggplot2    * 2.1.0      2016-03-01 CRAN (R 3.3.0)        
+ gtable       0.2.0      2016-02-26 CRAN (R 3.3.0)        
+ htmltools    0.3.5      2016-03-21 CRAN (R 3.3.0)        
+ knitr        1.13       2016-05-09 CRAN (R 3.3.0)        
+ labeling     0.3        2014-08-23 CRAN (R 3.3.0)        
+ lazyeval     0.2.0      2016-06-12 CRAN (R 3.3.0)        
+ magrittr     1.5        2014-11-22 CRAN (R 3.3.0)        
+ memoise      1.0.0      2016-01-29 CRAN (R 3.3.0)        
+ modelr     * 0.0.0.9000 2016-07-13 github (hadley/modelr)
+ munsell      0.4.3      2016-02-13 CRAN (R 3.3.0)        
+ plyr         1.8.4      2016-06-08 cran (@1.8.4)         
+ pryr       * 0.1.2      2015-06-20 CRAN (R 3.3.0)        
+ purrr      * 0.2.2.9000 2016-07-13 github (hadley/purrr) 
+ R6           2.1.2      2016-01-26 CRAN (R 3.3.0)        
+ Rcpp         0.12.5     2016-05-14 CRAN (R 3.3.0)        
+ rmarkdown    1.0        2016-07-08 CRAN (R 3.3.0)        
+ scales       0.4.0      2016-02-26 CRAN (R 3.3.0)        
+ stringi      1.1.1      2016-05-27 CRAN (R 3.3.0)        
+ stringr      1.0.0      2015-04-30 CRAN (R 3.3.0)        
+ tibble     * 1.1        2016-07-04 cran (@1.1)           
+ tidyr      * 0.5.1      2016-06-14 cran (@0.5.1)         
+ withr        1.0.2      2016-06-20 CRAN (R 3.3.0)        
+ yaml         2.1.13     2014-06-12 CRAN (R 3.3.0)        </code></pre>
 </div>
 
 
