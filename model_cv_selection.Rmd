@@ -216,6 +216,9 @@ make_model <- function(order){
   order
   
   function(df){
+    
+    df <- as.data.frame(df)
+    
     lm(y ~ poly(x, order), data = df)
   }
 }
@@ -227,7 +230,7 @@ Now we can make a dataframe of models and give each an appropriate name. The `fr
 df_model <-
   frame_data(
     ~model_name, ~model_creator,
-    "zero", make_model(0),
+#    "zero", make_model(0),
     "one", make_model(1),
     "two", make_model(2),
     "three", make_model(3),
@@ -249,6 +252,83 @@ df_sample_model <-
   left_join(df_model, by = "model_name") %>%
   print()
 ```
+
+We now have a dataframe that has, for each combination of split and model-specification, a training set and a function that can be used to build a model. We make a convenience function to put our model-creator functions to use, then create our models:
+
+```{r}
+make_model <- function(data, model_creator){
+  model_creator(data)
+}
+
+df_sample_model_created <-
+  df_sample_model %>%
+  mutate(
+    model = map2(train, model_creator, make_model)
+  ) %>%
+  print()
+```
+
+Now, lets generate some residuals:
+
+```{r}
+df_sample_resid <-
+  df_sample_model_created %>%
+  gather(key = split, value = data, train, test) %>%
+  mutate(
+    pred = map2(data, model, sample_prediction),
+    resp = map2(data, model, sample_response)
+  ) %>%
+  select(.id, model_name, split, pred, resp) %>%
+  unnest() %>%
+  mutate(resid = pred - resp) %>%
+  print()
+```
+
+And look at some kernel-density distributions:
+
+```{r}
+df_sample_resid %>%
+  mutate(model_name = factor(model_name, levels = c("one", "two", "three", "four", "five"))) %>%
+  ggplot(aes(x = resid, color = split, group = paste(split, .id))) +
+  stat_density(
+    aes(y = ..density..), 
+    geom = "line", 
+    position = "identity",
+    alpha = 0.3
+  ) +
+  facet_wrap(~ model_name) +
+  guides(color = guide_legend(override.aes = list(alpha = 1)))
+```
+
+```{r}
+df_sample_rmse <- 
+  df_sample_resid %>%
+  group_by(.id, model_name, split) %>%
+  summarize(
+    rmse = sqrt(sum(resid*resid)/length(resid))
+  ) %>%
+  ungroup() %>%
+  print()
+```
+
+```{r}
+df_sample_rmse %>%
+  mutate(model_name = factor(model_name, levels = c("one", "two", "three", "four", "five"))) %>%
+  ggplot(aes(x = model_name, y = rmse, color = split, group = split)) +
+  stat_summary(geom = "line", fun.y = "median") +
+  geom_point(
+    position = position_jitterdodge(jitter.width = 0.2, dodge.width = 0.5),
+    alpha = 0.5
+  ) +
+  ylim(0, NA) +
+  guides(color = guide_legend(override.aes = list(alpha = 1)))
+```
+
+The "two" model is the winner.
+
+The lines connect the median rmse for each model-type. I need to find a way to characterize the complexity of a given model so that the x-axis can be automatically sorted (maybe rmse on training error can be used to sort within groups of equally-complex models).
+
+Some work to do, but I think this is headed somehwere.
 
 ## Logistic regression
 
