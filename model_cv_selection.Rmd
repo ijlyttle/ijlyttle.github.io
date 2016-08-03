@@ -23,7 +23,9 @@ There are three type of things we want to do:
 
 3. For a given model (such as the chosen one), we want to make an estimate of how much confidence we should have in the significance of each of its coefficients.
 
-For the first two, we will use cross-validation - for the third we will use boostrapping.
+For the first two, we will use cross-validation - for the third we will use boostrapping. 
+
+In each case, I am trying to follow the spirit of "An Introduction to Statistical Learning" using the purrr/modelr toolbox.
 
 ## Linear regression
 
