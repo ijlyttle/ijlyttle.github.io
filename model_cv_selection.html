@@ -395,19 +395,20 @@ knitr::opts_chunk$set(comment = &quot;&quot;) # put this into a format, once dev
 <pre><code># A tibble: 100 x 2
            x        y
        &lt;dbl&gt;    &lt;dbl&gt;
-1  0.3586151 1.709639
-2  0.7227688 1.999813
-3  0.9120362 1.985136
-4  0.4834145 1.463210
-5  0.5616187 1.723652
-6  0.5039099 1.960012
-7  0.5369624 1.715158
-8  0.7751628 1.947230
-9  0.3489107 1.692465
-10 0.2650002 1.560231
+1  0.5948925 1.849581
+2  0.2536540 1.465151
+3  0.3134184 1.545397
+4  0.6440337 2.112101
+5  0.1543273 1.313777
+6  0.6841809 1.925050
+7  0.6812021 1.739937
+8  0.1983198 1.270087
+9  0.7687480 2.065276
+10 0.5059584 1.906972
 # ... with 90 more rows</code></pre>
 <p>Of course, our first step is to visualize the dataset.</p>
 <pre class="r"><code>ggplot(df, aes(x = x, y = y)) +
+  stat_function(fun = truth, color = &quot;black&quot;, alpha = 0.7, linetype = &quot;dashed&quot;) +
   geom_point(alpha = 0.6)</code></pre>
 <p><img src="model_cv_selection_files/figure-html/scatter-1.png" width="672" /></p>
 <p>This is a special case where we have a single independent variable. This is great for showing the concepts, but I am interested to explore visual tools that I can use to assess models that use multiple independent variables. It seems that focusing on the residual might be a useful place to start.</p>
@@ -438,16 +439,16 @@ knitr::opts_chunk$set(comment = &quot;&quot;) # put this into a format, once dev
  $ train:List of 1
   ..$ :List of 2
   .. ..$ data:Classes &#39;tbl_df&#39;, &#39;tbl&#39; and &#39;data.frame&#39;: 100 obs. of  2 variables:
-  .. .. ..$ x: num  0.359 0.723 0.912 0.483 0.562 ...
-  .. .. ..$ y: num  1.71 2 1.99 1.46 1.72 ...
-  .. ..$ idx : int  2 3 4 7 10 12 13 14 15 16 ...
+  .. .. ..$ x: num  0.595 0.254 0.313 0.644 0.154 ...
+  .. .. ..$ y: num  1.85 1.47 1.55 2.11 1.31 ...
+  .. ..$ idx : int  1 4 5 6 7 8 10 11 12 14 ...
   .. ..- attr(*, &quot;class&quot;)= chr &quot;resample&quot;
  $ test :List of 1
   ..$ :List of 2
   .. ..$ data:Classes &#39;tbl_df&#39;, &#39;tbl&#39; and &#39;data.frame&#39;: 100 obs. of  2 variables:
-  .. .. ..$ x: num  0.359 0.723 0.912 0.483 0.562 ...
-  .. .. ..$ y: num  1.71 2 1.99 1.46 1.72 ...
-  .. ..$ idx : int  1 5 6 8 9 11 22 26 33 46 ...
+  .. .. ..$ x: num  0.595 0.254 0.313 0.644 0.154 ...
+  .. .. ..$ y: num  1.85 1.47 1.55 2.11 1.31 ...
+  .. ..$ idx : int  2 3 9 13 24 39 40 41 43 48 ...
   .. ..- attr(*, &quot;class&quot;)= chr &quot;resample&quot;
  $ .id  : chr &quot;01&quot;</code></pre>
 <p>One thing you may notice is that both the train and test elements both <em>appear</em> to contain the entire original dataset. In fact, R keeps a single copy of the original dataframe, then uses pointers wherever it is used elsewhere in the session. For more, you can read <a href="http://adv-r.had.co.nz/memory.html#object-size">this section</a> and how I got some help in <a href="https://github.com/hadley/modelr/issues/14">this thread</a>.</p>
@@ -486,8 +487,7 @@ fn_model &lt;- function(df){
 <p>Mine is not the best judgement in this area, but it seems there are a couple of things that could be done - follow the approach used by the <a href="https://cran.r-project.org/web/packages/biglm/index.html">“biglm” package</a>, which uses a lightweight structure to store the model, or perhaps to adapt <code>lm()</code> to use a S3 resample object. OK, that second idea is a little unhinged.</p>
 <p>This is all to say that the purpose here is different than the one for which <code>lm()</code> was originally written.</p>
 <p>Onwards. For the next step, we need functions to determine, for a given sample and model, the response, the predicted value, and the residual.</p>
-<pre class="r"><code># given a dataframe and a model, return a vector of residuals
-sample_prediction &lt;- function(sample, model){
+<pre class="r"><code>sample_prediction &lt;- function(model, sample){
   
   df &lt;- as.data.frame(sample)
   
@@ -497,7 +497,7 @@ sample_prediction &lt;- function(sample, model){
 }
 
 # this will work for lm, biglm - will have to check for others
-sample_response &lt;- function(sample, model){
+sample_response &lt;- function(model, sample){
   
   df &lt;- as.data.frame(sample)
   
@@ -506,30 +506,32 @@ sample_response &lt;- function(sample, model){
   df[[var_response]]
 }</code></pre>
 <p>This next set of steps is a bit ambitious. We want to make a tall dataframe, where the <code>split</code> becomes a variable that can take the values <code>train</code> or <code>test</code>. For each model-split combination, we make a set of predictions and responses. We unnest the dataframe, then for each observation, we calculate the residual.</p>
-<pre class="r"><code>df_split_resid &lt;- 
+<pre class="r"><code># the reason I am not using add_prediction here is that I want to jettison the 
+# data more-easily and focus on the residuals
+df_split_resid &lt;- 
   df_split_model %&gt;%
   gather(key = split, value = data, train, test) %&gt;%
   mutate(
-    pred = map2(data, model, sample_prediction),
-    resp = map2(data, model, sample_response)
+    pred = map2(model, data, sample_prediction),
+    resp = map2(model, data, sample_response),
+    resid = map2(pred, resp, `-`)
   ) %&gt;%
-  select(-model, -data) %&gt;%
+  select(.id, split, pred, resp, resid) %&gt;%
   unnest() %&gt;%
-  mutate(resid = pred - resp) %&gt;%
   print()</code></pre>
 <pre><code># A tibble: 5,000 x 5
      .id split     pred     resp        resid
    &lt;chr&gt; &lt;chr&gt;    &lt;dbl&gt;    &lt;dbl&gt;        &lt;dbl&gt;
-1     01 train 1.895038 1.999813 -0.104774957
-2     01 train 2.076757 1.985136  0.091620158
-3     01 train 1.665231 1.463210  0.202021527
-4     01 train 1.716643 1.715158  0.001485485
-5     01 train 1.455529 1.560231 -0.104702506
-6     01 train 1.327817 1.194904  0.132913381
-7     01 train 1.249060 1.167856  0.081204578
-8     01 train 1.276897 1.147081  0.129816328
-9     01 train 1.898995 1.976516 -0.077520948
-10    01 train 1.478020 1.509529 -0.031508661
+1     01 train 1.773503 1.849581 -0.076078329
+2     01 train 1.824684 2.112101 -0.287416618
+3     01 train 1.314646 1.313777  0.000868507
+4     01 train 1.866498 1.925050 -0.058551619
+5     01 train 1.863396 1.739937  0.123459174
+6     01 train 1.360465 1.270087  0.090377478
+7     01 train 1.680876 1.906972 -0.226095413
+8     01 train 1.485176 1.573730 -0.088554436
+9     01 train 1.444580 1.521045 -0.076465121
+10    01 train 1.154393 1.098760  0.055633041
 # ... with 4,990 more rows</code></pre>
 <p>The thing we are interested to do is to compare the performance of models on their trianing sets with their proformance on their test sets. One way we can do this is to make qualitative assesments of the kernel density of the residuals.</p>
 <pre class="r"><code>ggplot(df_split_resid, aes(x = resid, color = split, group = paste(split, .id))) +
@@ -554,16 +556,16 @@ sample_response &lt;- function(sample, model){
 <pre><code># A tibble: 100 x 3
      .id split      rmse
    &lt;chr&gt; &lt;chr&gt;     &lt;dbl&gt;
-1     01  test 0.1546300
-2     01 train 0.1158320
-3     02  test 0.1131725
-4     02 train 0.1276568
-5     03  test 0.1261909
-6     03 train 0.1244469
-7     04  test 0.1347048
-8     04 train 0.1218527
-9     05  test 0.1183370
-10    05 train 0.1263965
+1     01  test 0.1159149
+2     01 train 0.1122840
+3     02  test 0.1441683
+4     02 train 0.1039552
+5     03  test 0.1036025
+6     03 train 0.1154678
+7     04  test 0.1234363
+8     04 train 0.1106317
+9     05  test 0.1422095
+10    05 train 0.1070378
 # ... with 90 more rows</code></pre>
 <p>We can visualize this summary.</p>
 <pre class="r"><code>ggplot(df_split_rmse, aes(x = &quot;linear&quot;, y = rmse)) +
@@ -666,8 +668,8 @@ df_sample_model_created &lt;-
   df_sample_model_created %&gt;%
   gather(key = split, value = data, train, test) %&gt;%
   mutate(
-    pred = map2(data, model, sample_prediction),
-    resp = map2(data, model, sample_response)
+    pred = map2(model, data, sample_prediction),
+    resp = map2(model, data, sample_response)
   ) %&gt;%
   select(.id, model_name, split, pred, resp) %&gt;%
   unnest() %&gt;%
@@ -676,16 +678,16 @@ df_sample_model_created &lt;-
 <pre><code># A tibble: 25,000 x 6
      .id model_name split     pred     resp        resid
    &lt;chr&gt;      &lt;chr&gt; &lt;chr&gt;    &lt;dbl&gt;    &lt;dbl&gt;        &lt;dbl&gt;
-1     01        one train 1.895038 1.999813 -0.104774957
-2     01        one train 2.076757 1.985136  0.091620158
-3     01        one train 1.665231 1.463210  0.202021527
-4     01        one train 1.716643 1.715158  0.001485485
-5     01        one train 1.455529 1.560231 -0.104702506
-6     01        one train 1.327817 1.194904  0.132913381
-7     01        one train 1.249060 1.167856  0.081204578
-8     01        one train 1.276897 1.147081  0.129816328
-9     01        one train 1.898995 1.976516 -0.077520948
-10    01        one train 1.478020 1.509529 -0.031508661
+1     01        one train 1.773503 1.849581 -0.076078329
+2     01        one train 1.824684 2.112101 -0.287416618
+3     01        one train 1.314646 1.313777  0.000868507
+4     01        one train 1.866498 1.925050 -0.058551619
+5     01        one train 1.863396 1.739937  0.123459174
+6     01        one train 1.360465 1.270087  0.090377478
+7     01        one train 1.680876 1.906972 -0.226095413
+8     01        one train 1.485176 1.573730 -0.088554436
+9     01        one train 1.444580 1.521045 -0.076465121
+10    01        one train 1.154393 1.098760  0.055633041
 # ... with 24,990 more rows</code></pre>
 <p>And look at some kernel-density distributions:</p>
 <pre class="r"><code>df_sample_resid %&gt;%
@@ -711,21 +713,21 @@ df_sample_model_created &lt;-
 <pre><code># A tibble: 500 x 4
      .id model_name split       rmse
    &lt;chr&gt;      &lt;chr&gt; &lt;chr&gt;      &lt;dbl&gt;
-1     01       five  test 0.12308816
-2     01       five train 0.09798133
-3     01       four  test 0.12202261
-4     01       four train 0.09826137
-5     01        one  test 0.15463001
-6     01        one train 0.11583199
-7     01      three  test 0.12216062
-8     01      three train 0.09850063
-9     01        two  test 0.12162320
-10    01        two train 0.09850634
+1     01       five  test 0.09720140
+2     01       five train 0.08983364
+3     01       four  test 0.09798906
+4     01       four train 0.09120485
+5     01        one  test 0.11591489
+6     01        one train 0.11228400
+7     01      three  test 0.09325565
+8     01      three train 0.09240958
+9     01        two  test 0.09209063
+10    01        two train 0.09248380
 # ... with 490 more rows</code></pre>
 <pre class="r"><code>df_sample_rmse %&gt;%
   mutate(model_name = factor(model_name, levels = c(&quot;one&quot;, &quot;two&quot;, &quot;three&quot;, &quot;four&quot;, &quot;five&quot;))) %&gt;%
   ggplot(aes(x = model_name, y = rmse, color = split, group = split)) +
-  stat_summary(geom = &quot;line&quot;, fun.y = &quot;median&quot;) +
+  stat_summary(geom = &quot;line&quot;, fun.y = &quot;mean&quot;) +
   geom_point(
     position = position_jitterdodge(jitter.width = 0.2, dodge.width = 0.5),
     alpha = 0.5
@@ -734,12 +736,296 @@ df_sample_model_created &lt;-
   guides(color = guide_legend(override.aes = list(alpha = 1)))</code></pre>
 <p><img src="model_cv_selection_files/figure-html/unnamed-chunk-16-1.png" width="672" /></p>
 <p>The “two” model is the winner.</p>
-<p>The lines connect the median rmse for each model-type. I need to find a way to characterize the complexity of a given model so that the x-axis can be automatically sorted (maybe rmse on training error can be used to sort within groups of equally-complex models).</p>
-<p>Some work to do, but I think this is headed somehwere.</p>
+<p>The lines connect the mean rmse for each model-type. I don’t know if median or mean is the better summary function to use for the lines (having experimented, I am liking the mean). I need to find a way to characterize the complexity of a given model so that the x-axis can be automatically sorted (maybe rmse on training error can be used to sort within groups of equally-complex models).</p>
+<p>Some work to do, but I think this is headed somehwere. Also, apropos nothing, there appears to be an opportinity here to use multidplyr - maybe this could be an advanced topic.</p>
 </div>
 </div>
 <div id="logistic-regression" class="section level2">
 <h2>Logistic regression</h2>
+<p>Let’s look at a classification problem.</p>
+<pre class="r"><code># clean this up
+fn_x &lt;- function(x){
+  -(x^2 - 2*x - 1)
+}
+
+resid_truth &lt;- function(x, y){
+  
+  (y - fn_x(x))/0.1
+  
+}</code></pre>
+<pre class="r"><code>nobs &lt;- 1000
+
+df_logistic &lt;- 
+  data_frame(
+    x = runif(nobs, 0, 1),
+    y = runif(nobs, 1, 2),
+    state = runif(nobs, 0, 1) &lt; pnorm(resid_truth(x, y))
+  )</code></pre>
+<pre class="r"><code>df_logistic %&gt;%
+  ggplot(aes(x = x, y = y, color = state, shape = state)) +
+  stat_function(fun = fn_x, color = &quot;black&quot;, alpha = 0.7, linetype = &quot;dashed&quot;) +
+  geom_point() </code></pre>
+<p><img src="model_cv_selection_files/figure-html/unnamed-chunk-19-1.png" width="672" /></p>
+<p>Confession time - I was not trained as a statistician. Thanks to many fruitful conversations with Di Cook, I know that one of the things you <em>should</em> do when doing when using resampling methods for classification is to make sure that in both the training and test sets that each class (positive and negative) are represented in each set in (as near as possible) the same proportion.</p>
+<p>The current <code>crossv_mc()</code> function does not support this. Perhaps one way to do it could be that <code>crossv_mc()</code> could support grouped data frames, and that it could return a resample object for which each group is properly represented. Confession time, part 2: I looked at this and thought that I would be spending much more time than I should trying to figure out how to do that, so I am going to punt for now. Perhaps the better thing to do will be to raise the issue, and let more-experienced minds sort through it.</p>
+<p>I will rely on the randomness resampling process to try to ensure the similarity of the proportions, and make a note to revisit this later.</p>
+<pre class="r"><code>df_logistic_cv &lt;- 
+  df_logistic %&gt;%
+  crossv_mc(n = 50) %&gt;%
+  print()</code></pre>
+<pre><code># A tibble: 50 x 3
+            train           test   .id
+           &lt;list&gt;         &lt;list&gt; &lt;chr&gt;
+1  &lt;S3: resample&gt; &lt;S3: resample&gt;    01
+2  &lt;S3: resample&gt; &lt;S3: resample&gt;    02
+3  &lt;S3: resample&gt; &lt;S3: resample&gt;    03
+4  &lt;S3: resample&gt; &lt;S3: resample&gt;    04
+5  &lt;S3: resample&gt; &lt;S3: resample&gt;    05
+6  &lt;S3: resample&gt; &lt;S3: resample&gt;    06
+7  &lt;S3: resample&gt; &lt;S3: resample&gt;    07
+8  &lt;S3: resample&gt; &lt;S3: resample&gt;    08
+9  &lt;S3: resample&gt; &lt;S3: resample&gt;    09
+10 &lt;S3: resample&gt; &lt;S3: resample&gt;    10
+# ... with 40 more rows</code></pre>
+<pre class="r"><code>make_model_logistic &lt;- function(order_x, order_y = 1){
+  
+  # superstition (maybe) to evaluate the expression, preserving it
+  # in this environment for the function
+  order
+  
+  function(df){
+    
+    df &lt;- as.data.frame(df)
+    
+    glm(
+      state ~ poly(y, order_y) + poly(x, order_x), 
+      data = df,
+      family = &quot;binomial&quot;
+    )
+  }
+}</code></pre>
+<p>Let’s see how this works for one model-type:</p>
+<pre class="r"><code>model_one &lt;- make_model_logistic(order_x = 1)
+
+df_logistic_model_one &lt;-
+  df_logistic_cv %&gt;%
+  mutate(model = map(train, model_one)) %&gt;%
+  print()</code></pre>
+<pre><code># A tibble: 50 x 4
+            train           test   .id     model
+           &lt;list&gt;         &lt;list&gt; &lt;chr&gt;    &lt;list&gt;
+1  &lt;S3: resample&gt; &lt;S3: resample&gt;    01 &lt;S3: glm&gt;
+2  &lt;S3: resample&gt; &lt;S3: resample&gt;    02 &lt;S3: glm&gt;
+3  &lt;S3: resample&gt; &lt;S3: resample&gt;    03 &lt;S3: glm&gt;
+4  &lt;S3: resample&gt; &lt;S3: resample&gt;    04 &lt;S3: glm&gt;
+5  &lt;S3: resample&gt; &lt;S3: resample&gt;    05 &lt;S3: glm&gt;
+6  &lt;S3: resample&gt; &lt;S3: resample&gt;    06 &lt;S3: glm&gt;
+7  &lt;S3: resample&gt; &lt;S3: resample&gt;    07 &lt;S3: glm&gt;
+8  &lt;S3: resample&gt; &lt;S3: resample&gt;    08 &lt;S3: glm&gt;
+9  &lt;S3: resample&gt; &lt;S3: resample&gt;    09 &lt;S3: glm&gt;
+10 &lt;S3: resample&gt; &lt;S3: resample&gt;    10 &lt;S3: glm&gt;
+# ... with 40 more rows</code></pre>
+<p>Let’s see how our predict and response functions work here, or if we need a new set of functions:</p>
+<pre class="r"><code>fn_misclass &lt;- function(pred, resp){
+  
+  # pred is given as log odds
+  # resp is given as T/F 
+  
+  is_misclass &lt;- (sign(pred) == 1) != resp
+  
+}
+
+df_logistic_resid_one &lt;- 
+  df_logistic_model_one %&gt;%
+  gather(key = split, value = data, train, test) %&gt;%
+  mutate(
+    pred = map2(model, data, sample_prediction),
+    resp = map2(model, data, sample_response),
+    is_misclass = map2(pred, resp, fn_misclass)
+  ) %&gt;%
+  select(.id, split, pred, resp, is_misclass) %&gt;%
+  unnest() %&gt;%
+  print()</code></pre>
+<pre><code># A tibble: 50,000 x 5
+     .id split       pred  resp is_misclass
+   &lt;chr&gt; &lt;chr&gt;      &lt;dbl&gt; &lt;lgl&gt;       &lt;lgl&gt;
+1     01 train -8.6780668 FALSE       FALSE
+2     01 train -8.1524276 FALSE       FALSE
+3     01 train -1.2842883 FALSE       FALSE
+4     01 train  1.0364425 FALSE        TRUE
+5     01 train  0.7618618  TRUE       FALSE
+6     01 train -5.2294967 FALSE       FALSE
+7     01 train -1.6492961 FALSE       FALSE
+8     01 train  0.6758856 FALSE        TRUE
+9     01 train  1.7617568  TRUE       FALSE
+10    01 train -2.7140858 FALSE       FALSE
+# ... with 49,990 more rows</code></pre>
+<p>This is going to be a real experiment. What if we looked at the density of miscalssifications as a function of prediction?</p>
+<p>We expect to have most of our misclassifications near where the log odds are zero.</p>
+<pre class="r"><code>ggplot(df_logistic_resid_one, aes(x = pred, color = split, group = paste(split, .id))) +
+  stat_density(
+    aes(y = ..density..), 
+    geom = &quot;line&quot;, 
+    position = &quot;identity&quot;,
+    alpha = 0.3
+  ) +
+  guides(color = guide_legend(override.aes = list(alpha = 1)))</code></pre>
+<p><img src="model_cv_selection_files/figure-html/unnamed-chunk-24-1.png" width="672" /></p>
+<p>I really have no idea how useful this will be.</p>
+<p>Let’s look at the misclassification rate - we will use this as our performance-metric, much as we used RMSE for linear regression.</p>
+<pre class="r"><code>df_logistic_misclass_one &lt;-
+  df_logistic_resid_one %&gt;%
+  group_by(.id, split) %&gt;%
+  summarize(
+    misclassification_rate = sum(is_misclass)/n()
+  ) %&gt;%
+  ungroup() %&gt;%
+  print()</code></pre>
+<pre><code># A tibble: 100 x 3
+     .id split misclassification_rate
+   &lt;chr&gt; &lt;chr&gt;                  &lt;dbl&gt;
+1     01  test             0.09950249
+2     01 train             0.08886108
+3     02  test             0.05970149
+4     02 train             0.09511890
+5     03  test             0.07462687
+6     03 train             0.09762203
+7     04  test             0.09950249
+8     04 train             0.08385482
+9     05  test             0.09452736
+10    05 train             0.09011264
+# ... with 90 more rows</code></pre>
+<pre class="r"><code>ggplot(df_logistic_misclass_one, aes(x = &quot;one_one&quot;, y = misclassification_rate)) +
+  geom_point(
+    aes(color = split), 
+    position = position_jitterdodge(jitter.width = 0.2, dodge.width = 0.5),
+    alpha = 0.75
+  ) +
+  ylim(0, NA) +
+  guides(color = guide_legend(override.aes = list(alpha = 1)))</code></pre>
+<p><img src="model_cv_selection_files/figure-html/unnamed-chunk-26-1.png" width="672" /></p>
+<p>Next, we want to look at how we might use this technique to evaluate multiple models.</p>
+<pre class="r"><code>df_model_logistic &lt;-
+  frame_data(
+    ~model_name, ~model_creator,
+    &quot;one_one&quot;, make_model_logistic(order_x = 1, order_y = 1),
+    &quot;two_one&quot;, make_model_logistic(order_x = 2, order_y = 1),
+    &quot;one_two&quot;, make_model_logistic(order_x = 1, order_y = 2),
+    &quot;three_one&quot;, make_model_logistic(order_x = 3, order_y = 1),
+    &quot;two_two&quot;, make_model_logistic(order_x = 2, order_y = 2),
+    &quot;one_three&quot;,  make_model_logistic(order_x = 1, order_y = 3)
+  ) %&gt;% 
+  print()</code></pre>
+<pre><code># A tibble: 6 x 2
+  model_name model_creator
+       &lt;chr&gt;        &lt;list&gt;
+1    one_one         &lt;fun&gt;
+2    two_one         &lt;fun&gt;
+3    one_two         &lt;fun&gt;
+4  three_one         &lt;fun&gt;
+5    two_two         &lt;fun&gt;
+6  one_three         &lt;fun&gt;</code></pre>
+<pre class="r"><code>df_sample_logistic_model &lt;- 
+  expand.grid(.id = df_logistic_cv$.id, model_name = df_model_logistic$model_name, stringsAsFactors = FALSE) %&gt;%
+  as_data_frame() %&gt;%
+  left_join(df_logistic_cv, by = &quot;.id&quot;) %&gt;%
+  left_join(df_model_logistic, by = &quot;model_name&quot;) %&gt;%
+  mutate(model = map2(train, model_creator, make_model)) %&gt;%
+  print()</code></pre>
+<pre><code># A tibble: 300 x 6
+     .id model_name          train           test model_creator     model
+   &lt;chr&gt;      &lt;chr&gt;         &lt;list&gt;         &lt;list&gt;        &lt;list&gt;    &lt;list&gt;
+1     01    one_one &lt;S3: resample&gt; &lt;S3: resample&gt;         &lt;fun&gt; &lt;S3: glm&gt;
+2     02    one_one &lt;S3: resample&gt; &lt;S3: resample&gt;         &lt;fun&gt; &lt;S3: glm&gt;
+3     03    one_one &lt;S3: resample&gt; &lt;S3: resample&gt;         &lt;fun&gt; &lt;S3: glm&gt;
+4     04    one_one &lt;S3: resample&gt; &lt;S3: resample&gt;         &lt;fun&gt; &lt;S3: glm&gt;
+5     05    one_one &lt;S3: resample&gt; &lt;S3: resample&gt;         &lt;fun&gt; &lt;S3: glm&gt;
+6     06    one_one &lt;S3: resample&gt; &lt;S3: resample&gt;         &lt;fun&gt; &lt;S3: glm&gt;
+7     07    one_one &lt;S3: resample&gt; &lt;S3: resample&gt;         &lt;fun&gt; &lt;S3: glm&gt;
+8     08    one_one &lt;S3: resample&gt; &lt;S3: resample&gt;         &lt;fun&gt; &lt;S3: glm&gt;
+9     09    one_one &lt;S3: resample&gt; &lt;S3: resample&gt;         &lt;fun&gt; &lt;S3: glm&gt;
+10    10    one_one &lt;S3: resample&gt; &lt;S3: resample&gt;         &lt;fun&gt; &lt;S3: glm&gt;
+# ... with 290 more rows</code></pre>
+<pre class="r"><code>df_sample_logistic_resid &lt;-
+  df_sample_logistic_model %&gt;%
+  gather(key = split, value = data, train, test) %&gt;%
+  mutate(
+    pred = map2(model, data, sample_prediction),
+    resp = map2(model, data, sample_response),
+    is_misclass = map2(pred, resp, fn_misclass)
+  ) %&gt;%
+  select(.id, model_name, split, pred, is_misclass) %&gt;%
+  unnest() %&gt;%
+  print()</code></pre>
+<pre><code># A tibble: 300,000 x 5
+     .id model_name split       pred is_misclass
+   &lt;chr&gt;      &lt;chr&gt; &lt;chr&gt;      &lt;dbl&gt;       &lt;lgl&gt;
+1     01    one_one train -8.6780668       FALSE
+2     01    one_one train -8.1524276       FALSE
+3     01    one_one train -1.2842883       FALSE
+4     01    one_one train  1.0364425        TRUE
+5     01    one_one train  0.7618618       FALSE
+6     01    one_one train -5.2294967       FALSE
+7     01    one_one train -1.6492961       FALSE
+8     01    one_one train  0.6758856        TRUE
+9     01    one_one train  1.7617568       FALSE
+10    01    one_one train -2.7140858       FALSE
+# ... with 299,990 more rows</code></pre>
+<pre class="r"><code>levels_model_logistic &lt;- 
+  c(&quot;one_one&quot;, &quot;one_two&quot;, &quot;two_one&quot;, &quot;one_three&quot;, &quot;two_two&quot;, &quot;three_one&quot;)
+
+df_sample_logistic_resid %&gt;%
+  mutate(model_name = factor(model_name, levels = levels_model_logistic)) %&gt;%
+  ggplot(aes(x = pred, color = split, group = paste(split, .id))) +
+  stat_density(
+    aes(y = ..density..), 
+    geom = &quot;line&quot;, 
+    position = &quot;identity&quot;,
+    alpha = 0.3
+  ) +
+  facet_wrap(~ model_name) +
+  guides(color = guide_legend(override.aes = list(alpha = 1)))</code></pre>
+<p><img src="model_cv_selection_files/figure-html/unnamed-chunk-30-1.png" width="672" /></p>
+<p>This may not be the best idea, as I am not seeing much difference between any of the models. Let’s look at the misclassification rate:</p>
+<pre class="r"><code>df_logistic_misclass &lt;-
+  df_sample_logistic_resid %&gt;%
+  group_by(.id, model_name, split) %&gt;%
+  summarize(
+    misclassification_rate = sum(is_misclass)/n()
+  ) %&gt;%
+  ungroup() %&gt;%
+  print()</code></pre>
+<pre><code># A tibble: 600 x 4
+     .id model_name split misclassification_rate
+   &lt;chr&gt;      &lt;chr&gt; &lt;chr&gt;                  &lt;dbl&gt;
+1     01    one_one  test             0.09950249
+2     01    one_one train             0.08886108
+3     01  one_three  test             0.08457711
+4     01  one_three train             0.07259074
+5     01    one_two  test             0.07960199
+6     01    one_two train             0.07884856
+7     01  three_one  test             0.07462687
+8     01  three_one train             0.07259074
+9     01    two_one  test             0.07462687
+10    01    two_one train             0.07259074
+# ... with 590 more rows</code></pre>
+<pre class="r"><code>df_logistic_misclass %&gt;%
+  mutate(model_name = factor(model_name, levels = levels_model_logistic)) %&gt;%
+  ggplot(aes(x = model_name, y = misclassification_rate, color = split, group = split)) +
+  stat_summary(geom = &quot;line&quot;, fun.y = &quot;mean&quot;) +
+  geom_point(
+    position = position_jitterdodge(jitter.width = 0.2, dodge.width = 0.5),
+    alpha = 0.75
+  ) +
+  ylim(0, NA) +
+  guides(color = guide_legend(override.aes = list(alpha = 1)))</code></pre>
+<p><img src="model_cv_selection_files/figure-html/unnamed-chunk-32-1.png" width="672" /></p>
+<p>This plot is not quite as satisfying as the one for linear-regression, but I can do some hand-waving. The “true” model is “two_one” - and this is the simplest model that has the lowest mean misclassification rate over its train and test sets.</p>
+</div>
+<div id="summary" class="section level2">
+<h2>Summary</h2>
+<p>For both a regression problem and a classification problem we have showed how we can use tools found in the Tidyverse to help us with model selection.</p>
+<p>Our next step will be to use bootstrapping to assess the parameters for models that we have selected here.</p>
 </div>
 <div id="session" class="section level2">
 <h2>Session</h2>
@@ -752,41 +1038,41 @@ df_sample_model_created &lt;-
  language (EN)                        
  collate  en_US.UTF-8                 
  tz       America/Chicago             
- date     2016-08-03                  </code></pre>
+ date     2016-08-04                  </code></pre>
 <pre><code>Packages ------------------------------------------------------------------</code></pre>
-<pre><code> package    * version    date       source                
- assertthat   0.1        2013-12-06 CRAN (R 3.3.0)        
- codetools    0.2-14     2015-07-15 CRAN (R 3.3.1)        
- colorspace   1.2-6      2015-03-11 CRAN (R 3.3.0)        
- DBI          0.4-1      2016-05-08 CRAN (R 3.3.0)        
- devtools   * 1.12.0     2016-06-24 CRAN (R 3.3.0)        
- digest       0.6.9      2016-01-08 CRAN (R 3.3.0)        
- dplyr      * 0.5.0      2016-06-24 cran (@0.5.0)         
- evaluate     0.9        2016-04-29 CRAN (R 3.3.0)        
- formatR      1.4        2016-05-09 CRAN (R 3.3.0)        
- ggplot2    * 2.1.0      2016-03-01 CRAN (R 3.3.0)        
- gtable       0.2.0      2016-02-26 CRAN (R 3.3.0)        
- htmltools    0.3.5      2016-03-21 CRAN (R 3.3.0)        
- knitr        1.13       2016-05-09 CRAN (R 3.3.0)        
- labeling     0.3        2014-08-23 CRAN (R 3.3.0)        
- lazyeval     0.2.0      2016-06-12 CRAN (R 3.3.0)        
- magrittr     1.5        2014-11-22 CRAN (R 3.3.0)        
- memoise      1.0.0      2016-01-29 CRAN (R 3.3.0)        
- modelr     * 0.0.0.9000 2016-07-13 github (hadley/modelr)
- munsell      0.4.3      2016-02-13 CRAN (R 3.3.0)        
- plyr         1.8.4      2016-06-08 cran (@1.8.4)         
- pryr       * 0.1.2      2015-06-20 CRAN (R 3.3.0)        
- purrr      * 0.2.2.9000 2016-07-13 github (hadley/purrr) 
- R6           2.1.2      2016-01-26 CRAN (R 3.3.0)        
- Rcpp         0.12.5     2016-05-14 CRAN (R 3.3.0)        
- rmarkdown    1.0        2016-07-08 CRAN (R 3.3.0)        
- scales       0.4.0      2016-02-26 CRAN (R 3.3.0)        
- stringi      1.1.1      2016-05-27 CRAN (R 3.3.0)        
- stringr      1.0.0      2015-04-30 CRAN (R 3.3.0)        
- tibble     * 1.1        2016-07-04 cran (@1.1)           
- tidyr      * 0.5.1      2016-06-14 cran (@0.5.1)         
- withr        1.0.2      2016-06-20 CRAN (R 3.3.0)        
- yaml         2.1.13     2014-06-12 CRAN (R 3.3.0)        </code></pre>
+<pre><code> package    * version    date       source                        
+ assertthat   0.1        2013-12-06 CRAN (R 3.3.0)                
+ codetools    0.2-14     2015-07-15 CRAN (R 3.3.1)                
+ colorspace   1.2-6      2015-03-11 CRAN (R 3.3.0)                
+ DBI          0.4-1      2016-05-08 CRAN (R 3.3.0)                
+ devtools   * 1.12.0     2016-06-24 CRAN (R 3.3.0)                
+ digest       0.6.9      2016-01-08 CRAN (R 3.3.0)                
+ dplyr      * 0.5.0      2016-06-24 cran (@0.5.0)                 
+ evaluate     0.9        2016-04-29 CRAN (R 3.3.0)                
+ formatR      1.4        2016-05-09 CRAN (R 3.3.0)                
+ ggplot2    * 2.1.0      2016-03-01 CRAN (R 3.3.0)                
+ gtable       0.2.0      2016-02-26 CRAN (R 3.3.0)                
+ htmltools    0.3.5      2016-03-21 CRAN (R 3.3.0)                
+ knitr        1.13       2016-05-09 CRAN (R 3.3.0)                
+ labeling     0.3        2014-08-23 CRAN (R 3.3.0)                
+ lazyeval     0.2.0      2016-06-12 CRAN (R 3.3.0)                
+ magrittr     1.5        2014-11-22 CRAN (R 3.3.0)                
+ memoise      1.0.0      2016-01-29 CRAN (R 3.3.0)                
+ modelr     * 0.0.0.9000 2016-08-04 Github (hadley/modelr@e27f9ee)
+ munsell      0.4.3      2016-02-13 CRAN (R 3.3.0)                
+ plyr         1.8.4      2016-06-08 cran (@1.8.4)                 
+ pryr       * 0.1.2      2015-06-20 CRAN (R 3.3.0)                
+ purrr      * 0.2.2.9000 2016-08-04 Github (hadley/purrr@d162445) 
+ R6           2.1.2      2016-01-26 CRAN (R 3.3.0)                
+ Rcpp         0.12.6     2016-07-19 cran (@0.12.6)                
+ rmarkdown    1.0        2016-07-08 CRAN (R 3.3.0)                
+ scales       0.4.0      2016-02-26 CRAN (R 3.3.0)                
+ stringi      1.1.1      2016-05-27 CRAN (R 3.3.0)                
+ stringr      1.0.0      2015-04-30 CRAN (R 3.3.0)                
+ tibble     * 1.1        2016-07-04 cran (@1.1)                   
+ tidyr      * 0.5.1.9001 2016-08-04 Github (hadley/tidyr@5a70625) 
+ withr        1.0.2      2016-06-20 CRAN (R 3.3.0)                
+ yaml         2.1.13     2014-06-12 CRAN (R 3.3.0)                </code></pre>
 </div>
 
 

@@ -1,3 +1,183 @@
 ---
 title: "Parameter-assessment using bootstrapping"
 ---
+
+```{r}
+library("devtools")
+library("tibble")
+library("ggplot2")
+library("modelr")
+library("dplyr")
+library("purrr")
+library("tidyr")
+library("pryr")
+library("broom")
+
+knitr::opts_chunk$set(comment = "") # put this into a format, once developed
+```
+
+In this page, we want to take models we have selected using cross-validation, then assess their parameters using bootstrapping.
+
+The goal of parameter assessment is to demonstrate (hopefully) that each of your parameters is significantly different from zero, to justify each parameter's inclusion in a model.
+
+## Linear Regresssion
+
+Let's recreate our example from earlier. Thanks to randomization, this will not be exactly the same dataset as before, but that's OK.
+
+```{r}
+truth <- function(x){
+  1 + 2*x - x^2
+}
+
+noise <- function(x){
+  rnorm(length(x), sd = 0.1)
+}
+```
+
+```{r}
+df_regression <- 
+  data_frame(
+    x = runif(n = 100, min = 0, max = 1),
+    y = truth(x) + noise(x)
+  ) %>%
+  print()
+```
+
+```{r}
+ggplot(df_regression, aes(x = x, y = y)) +
+  stat_function(fun = truth, color = "black", alpha = 0.7, linetype = "dashed") +
+  geom_point(alpha = 0.6)
+```
+
+In bootstrapping, the thought is to create a bunch of new datasets sampled **with** replacement from the original dataset. Thankfully, there is a "modelr" function to help us.
+
+```{r}
+df_regression_bootstrap <- 
+  df_regression %>%
+  modelr::bootstrap(10000) %>% # broom-modelr collision alert
+  print()
+```
+
+Using this dataframe, we can evaluate our quadratic model for each member of `strap`.
+
+```{r}
+fn_model <- function(data){
+  lm(y ~ poly(x, 2), data = data)
+}
+
+df_regression_bootstrap_model <- 
+  df_regression_bootstrap %>%
+  mutate(model = map(strap, fn_model)) %>%
+  print()
+```
+
+Now we want to get the parameters. So we use "broom".
+
+```{r}
+df_regression_bootstrap_param <-
+  df_regression_bootstrap_model %>%
+  mutate(param = map(model, tidy)) %>%
+  select(.id, param) %>%
+  unnest() %>%
+  print()
+```
+
+```{r}
+df_regression_bootstrap_param %>%
+  ggplot(aes(x = estimate)) + 
+  geom_histogram(binwidth = 0.05) +
+  facet_grid(term ~ ., scales = "free_x") 
+```
+
+Our goal here is to show that the parameter-observations stay "far enough" away from zero. Let's start by determining the mean for each term:
+
+```{r}
+df_regression_bootstrap_param_mean <- 
+  df_regression_bootstrap_param %>%
+  group_by(term) %>%
+  summarize(estimate_mean = mean(estimate)) %>%
+  print()
+```
+
+Note to self - I think the `poly()` function uses orthogonal polynomials, so I'd like to find out how to transform these coefficient estimates into coefficients that multiply $(1, x, x^2)$. I know it's something simple - just to sit down and do it.
+
+There are two ways we can further investigate the significance of each term - visually, and to make a table of the proportion of bootstrap models where the sign of the parameter is different from the sign of the mean.
+
+```{r}
+df_regression_bootstrap_param_scaled <- 
+  df_regression_bootstrap_param %>%
+  left_join(df_regression_bootstrap_param_mean, by = "term") %>%
+  transmute(
+    .id,
+    term,
+    estimate_scaled = estimate/estimate_mean
+  ) %>%
+  print()
+```
+
+```{r}
+df_regression_bootstrap_param_scaled %>%
+  ggplot(aes(x = estimate_scaled)) + 
+  geom_histogram(binwidth = 0.01) +
+  xlim(0, NA) +
+  facet_grid(term ~ ., scales = "free_x") 
+```
+
+This gives us an idea (I think) of the relative confidence we can have in each of the parameter estimates, although it seems we can be confident in all of them. 
+
+Let's look at some summaries for each set of scaled estimates:
+
+```{r}
+df_regression_bootstrap_param_scaled %>%
+  group_by(term) %>%
+  summarize(
+    n_bootstrap = n(),
+    n_sign_opposite = sum(sign(estimate_scaled) != 1)/n(),
+    min_estimate_scaled = min(estimate_scaled)
+  ) %>%
+  print()
+```
+
+It may also be interesting to look at the interquartile range as way to quantify our confidence.
+
+```{r}
+df_regression_bootstrap_param %>%
+  group_by(term) %>%
+  summarize(
+    q_25 = quantile(estimate, 0.25),
+    median = median(estimate, 0.5),
+    q_75 = quantile(estimate, 0.75)
+  ) %>%
+  print()
+```
+
+Finally, it may be interesting to look at our bootstrapped models, along with the original data, and the "truth". Of course, we recognize that we can pull this off thanks to our single independent variable.
+
+```{r}
+grid <- 
+  df_regression %>% 
+  expand(x = seq_range(x, 20))
+
+boot_pred <- 
+  df_regression_bootstrap_model %>% 
+  transmute(
+    .id,
+    data = map2(list(grid), model, add_predictions, var = "y")
+  ) %>%
+  unnest() %>%
+  print()
+```
+
+```{r}
+ggplot(data = df_regression, mapping = aes(x = x, y = y)) +
+  geom_line(
+    data = boot_pred %>% filter(as.numeric(.id) < 3000), 
+    aes(group = .id), 
+    color = "blue", 
+    alpha = 0.002
+  ) +
+  stat_function(fun = truth, color = "black", linetype = "dashed", size = 1) +
+  geom_point(data = df_regression, alpha = 0.5) 
+```
+
+To my eye, it seems that the "truth" function does not intersect the area occupied by bootstrap models as well as I would like. It could be that I don't understand bootstrapping as well as I should.

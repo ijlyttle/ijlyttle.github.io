@@ -62,6 +62,7 @@ Of course, our first step is to visualize the dataset.
 
 ```{r scatter}
 ggplot(df, aes(x = x, y = y)) +
+  stat_function(fun = truth, color = "black", alpha = 0.7, linetype = "dashed") +
   geom_point(alpha = 0.6)
 ```
 
@@ -124,8 +125,7 @@ This is all to say that the purpose here is different than the one for which `lm
 Onwards. For the next step, we need functions to determine, for a given sample and model, the response, the predicted value, and the residual.
 
 ```{r}
-# given a dataframe and a model, return a vector of residuals
-sample_prediction <- function(sample, model){
+sample_prediction <- function(model, sample){
   
   df <- as.data.frame(sample)
   
@@ -135,7 +135,7 @@ sample_prediction <- function(sample, model){
 }
 
 # this will work for lm, biglm - will have to check for others
-sample_response <- function(sample, model){
+sample_response <- function(model, sample){
   
   df <- as.data.frame(sample)
   
@@ -148,16 +148,18 @@ sample_response <- function(sample, model){
 This next set of steps is a bit ambitious. We want to make a tall dataframe, where the `split` becomes a variable that can take the values `train` or `test`. For each model-split combination, we make a set of predictions and responses. We unnest the dataframe, then for each observation, we calculate the residual.
 
 ```{r}
+# the reason I am not using add_prediction here is that I want to jettison the 
+# data more-easily and focus on the residuals
 df_split_resid <- 
   df_split_model %>%
   gather(key = split, value = data, train, test) %>%
   mutate(
-    pred = map2(data, model, sample_prediction),
-    resp = map2(data, model, sample_response)
+    pred = map2(model, data, sample_prediction),
+    resp = map2(model, data, sample_response),
+    resid = map2(pred, resp, `-`)
   ) %>%
-  select(-model, -data) %>%
+  select(.id, split, pred, resp, resid) %>%
   unnest() %>%
-  mutate(resid = pred - resp) %>%
   print()
 ```
 
@@ -277,8 +279,8 @@ df_sample_resid <-
   df_sample_model_created %>%
   gather(key = split, value = data, train, test) %>%
   mutate(
-    pred = map2(data, model, sample_prediction),
-    resp = map2(data, model, sample_response)
+    pred = map2(model, data, sample_prediction),
+    resp = map2(model, data, sample_response)
   ) %>%
   select(.id, model_name, split, pred, resp) %>%
   unnest() %>%
@@ -317,7 +319,7 @@ df_sample_rmse <-
 df_sample_rmse %>%
   mutate(model_name = factor(model_name, levels = c("one", "two", "three", "four", "five"))) %>%
   ggplot(aes(x = model_name, y = rmse, color = split, group = split)) +
-  stat_summary(geom = "line", fun.y = "median") +
+  stat_summary(geom = "line", fun.y = "mean") +
   geom_point(
     position = position_jitterdodge(jitter.width = 0.2, dodge.width = 0.5),
     alpha = 0.5
@@ -326,14 +328,248 @@ df_sample_rmse %>%
   guides(color = guide_legend(override.aes = list(alpha = 1)))
 ```
 
-The "two" model is the winner.
+The "two" model is the winner. 
 
-The lines connect the median rmse for each model-type. I need to find a way to characterize the complexity of a given model so that the x-axis can be automatically sorted (maybe rmse on training error can be used to sort within groups of equally-complex models).
+The lines connect the mean rmse for each model-type. I don't know if median or mean is the better summary function to use for the lines (having experimented, I am liking the mean). I need to find a way to characterize the complexity of a given model so that the x-axis can be automatically sorted (maybe rmse on training error can be used to sort within groups of equally-complex models).
 
-Some work to do, but I think this is headed somehwere.
+Some work to do, but I think this is headed somehwere. Also, apropos nothing, there appears to be an opportinity here to use multidplyr - maybe this could be an advanced topic.
 
 ## Logistic regression
 
+Let's look at a classification problem.
+
+```{r}
+# clean this up
+fn_x <- function(x){
+  -(x^2 - 2*x - 1)
+}
+
+resid_truth <- function(x, y){
+  
+  (y - fn_x(x))/0.1
+  
+}
+```
+
+```{r}
+nobs <- 1000
+
+df_logistic <- 
+  data_frame(
+    x = runif(nobs, 0, 1),
+    y = runif(nobs, 1, 2),
+    state = runif(nobs, 0, 1) < pnorm(resid_truth(x, y))
+  )
+```
+
+```{r}
+df_logistic %>%
+  ggplot(aes(x = x, y = y, color = state, shape = state)) +
+  stat_function(fun = fn_x, color = "black", alpha = 0.7, linetype = "dashed") +
+  geom_point() 
+```
+
+Confession time - I was not trained as a statistician. Thanks to many fruitful conversations with Di Cook, I know that one of the things you *should* do when doing when using resampling methods for classification is to make sure that in both the training and test sets that each class (positive and negative) are represented in each set in (as near as possible) the same proportion.
+
+The current `crossv_mc()` function does not support this. Perhaps one way to do it could be that `crossv_mc()` could support grouped data frames, and that it could return a resample object for which each group is properly represented. Confession time, part 2: I looked at this and thought that I would be spending much more time than I should trying to figure out how to do that, so I am going to punt for now. Perhaps the better thing to do will be to raise the issue, and let more-experienced minds sort through it.
+
+I will rely on the randomness resampling process to try to ensure the similarity of the proportions, and make a note to revisit this later.
+
+```{r}
+df_logistic_cv <- 
+  df_logistic %>%
+  crossv_mc(n = 50) %>%
+  print()
+```
+
+
+```{r}
+make_model_logistic <- function(order_x, order_y = 1){
+  
+  # superstition (maybe) to evaluate the expression, preserving it
+  # in this environment for the function
+  order
+  
+  function(df){
+    
+    df <- as.data.frame(df)
+    
+    glm(
+      state ~ poly(y, order_y) + poly(x, order_x), 
+      data = df,
+      family = "binomial"
+    )
+  }
+}
+```
+
+Let's see how this works for one model-type:
+
+```{r}
+model_one <- make_model_logistic(order_x = 1)
+
+df_logistic_model_one <-
+  df_logistic_cv %>%
+  mutate(model = map(train, model_one)) %>%
+  print()
+```
+
+Let's see how our predict and response functions work here, or if we need a new set of functions:
+
+```{r}
+fn_misclass <- function(pred, resp){
+  
+  # pred is given as log odds
+  # resp is given as T/F 
+  
+  is_misclass <- (sign(pred) == 1) != resp
+  
+}
+
+df_logistic_resid_one <- 
+  df_logistic_model_one %>%
+  gather(key = split, value = data, train, test) %>%
+  mutate(
+    pred = map2(model, data, sample_prediction),
+    resp = map2(model, data, sample_response),
+    is_misclass = map2(pred, resp, fn_misclass)
+  ) %>%
+  select(.id, split, pred, resp, is_misclass) %>%
+  unnest() %>%
+  print()
+```
+
+This is going to be a real experiment. What if we looked at the density of miscalssifications as a function of prediction?
+
+We expect to have most of our misclassifications near where the log odds are zero.
+
+```{r}
+ggplot(df_logistic_resid_one, aes(x = pred, color = split, group = paste(split, .id))) +
+  stat_density(
+    aes(y = ..density..), 
+    geom = "line", 
+    position = "identity",
+    alpha = 0.3
+  ) +
+  guides(color = guide_legend(override.aes = list(alpha = 1)))
+```
+
+I really have no idea how useful this will be.
+
+Let's look at the misclassification rate - we will use this as our performance-metric, much as we used RMSE for linear regression.
+
+```{r}
+df_logistic_misclass_one <-
+  df_logistic_resid_one %>%
+  group_by(.id, split) %>%
+  summarize(
+    misclassification_rate = sum(is_misclass)/n()
+  ) %>%
+  ungroup() %>%
+  print()
+```
+
+```{r}
+ggplot(df_logistic_misclass_one, aes(x = "one_one", y = misclassification_rate)) +
+  geom_point(
+    aes(color = split), 
+    position = position_jitterdodge(jitter.width = 0.2, dodge.width = 0.5),
+    alpha = 0.75
+  ) +
+  ylim(0, NA) +
+  guides(color = guide_legend(override.aes = list(alpha = 1)))
+```
+
+Next, we want to look at how we might use this technique to evaluate multiple models.
+
+```{r}
+df_model_logistic <-
+  frame_data(
+    ~model_name, ~model_creator,
+    "one_one", make_model_logistic(order_x = 1, order_y = 1),
+    "two_one", make_model_logistic(order_x = 2, order_y = 1),
+    "one_two", make_model_logistic(order_x = 1, order_y = 2),
+    "three_one", make_model_logistic(order_x = 3, order_y = 1),
+    "two_two", make_model_logistic(order_x = 2, order_y = 2),
+    "one_three",  make_model_logistic(order_x = 1, order_y = 3)
+  ) %>% 
+  print()
+```
+
+```{r}
+df_sample_logistic_model <- 
+  expand.grid(.id = df_logistic_cv$.id, model_name = df_model_logistic$model_name, stringsAsFactors = FALSE) %>%
+  as_data_frame() %>%
+  left_join(df_logistic_cv, by = ".id") %>%
+  left_join(df_model_logistic, by = "model_name") %>%
+  mutate(model = map2(train, model_creator, make_model)) %>%
+  print()
+```
+
+```{r}
+df_sample_logistic_resid <-
+  df_sample_logistic_model %>%
+  gather(key = split, value = data, train, test) %>%
+  mutate(
+    pred = map2(model, data, sample_prediction),
+    resp = map2(model, data, sample_response),
+    is_misclass = map2(pred, resp, fn_misclass)
+  ) %>%
+  select(.id, model_name, split, pred, is_misclass) %>%
+  unnest() %>%
+  print()
+```
+
+```{r}
+levels_model_logistic <- 
+  c("one_one", "one_two", "two_one", "one_three", "two_two", "three_one")
+
+df_sample_logistic_resid %>%
+  mutate(model_name = factor(model_name, levels = levels_model_logistic)) %>%
+  ggplot(aes(x = pred, color = split, group = paste(split, .id))) +
+  stat_density(
+    aes(y = ..density..), 
+    geom = "line", 
+    position = "identity",
+    alpha = 0.3
+  ) +
+  facet_wrap(~ model_name) +
+  guides(color = guide_legend(override.aes = list(alpha = 1)))
+```
+
+This may not be the best idea, as I am not seeing much difference between any of the models. Let's look at the misclassification rate:
+
+```{r}
+df_logistic_misclass <-
+  df_sample_logistic_resid %>%
+  group_by(.id, model_name, split) %>%
+  summarize(
+    misclassification_rate = sum(is_misclass)/n()
+  ) %>%
+  ungroup() %>%
+  print()
+```
+
+```{r}
+df_logistic_misclass %>%
+  mutate(model_name = factor(model_name, levels = levels_model_logistic)) %>%
+  ggplot(aes(x = model_name, y = misclassification_rate, color = split, group = split)) +
+  stat_summary(geom = "line", fun.y = "mean") +
+  geom_point(
+    position = position_jitterdodge(jitter.width = 0.2, dodge.width = 0.5),
+    alpha = 0.75
+  ) +
+  ylim(0, NA) +
+  guides(color = guide_legend(override.aes = list(alpha = 1)))
+```
+
+This plot is not quite as satisfying as the one for linear-regression, but I can do some hand-waving. The "true" model is "two_one" - and this is the simplest model that has the lowest mean misclassification rate over its train and test sets.
+
+## Summary
+
+For both a regression problem and a classification problem we have showed how we can use tools found in the Tidyverse to help us with model selection.
+
+Our next step will be to use bootstrapping to assess the parameters for models that we have selected here.
 
 ## Session
 
