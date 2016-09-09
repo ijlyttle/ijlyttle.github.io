@@ -11,7 +11,7 @@
 
 
 
-<title>Devtools and GitHub Enterprise</title>
+<title></title>
 
 <script src="site_libs/jquery-1.11.3/jquery.min.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -357,137 +357,98 @@ div.tocify {
 
 
 
-<h1 class="title toc-ignore">Devtools and GitHub Enterprise</h1>
 
 </div>
 
 
-<p>As you know, the devtools package makes it super-easier to develop and deploy packages. Thanks to Hadley Wickham, installing a package from GitHub is as easy as <code>devtools::install_github()</code>; thanks to Jenny Bryan, starting your own package using GitHub as simply a call to <code>devtools::use_github()</code>.</p>
-<p>If you work at an institution with an instance of GitHub Enterprise, the devtools package can still be useful to you, but there are some things you can do to help everyone at your institution use <em>your</em> instance of GitHub just as easily as you use github.com.</p>
-<p>In this page, I will propose how you can build a modest package that will be adapted to your instution and github instance. To be clear, I am not claiming this to be a best practice. I am claiming only that it is <em>a</em> practice. Your feedback will be very welcome to improve this practice.</p>
-<div id="package" class="section level2">
-<h2>Package</h2>
-<p>For the purposes of this discussion, I will refer to a package called <code>utilrPrivate</code> - you may wish to interpolate the name of your institution onto <code>Private</code>.</p>
-<p>At some point, I’ll add some prose, but I just want to get this “out” for now.</p>
-<div id="readme" class="section level3">
-<h3>Readme</h3>
-<p>Here’s a <a href="https://github.com/ijlyttle/ijlyttle.github.io/blob/master/nondim_devtools_gh_readme.md">template README.md file</a> you can use; I tried to moustache what I could.</p>
+<div id="utilrprivate" class="section level1">
+<h1>utilr{{Private}}</h1>
+<p>This is a lightweight package, built on top of Hadley Wickham’s (henceforth Hadley) <a href="https://github.com/hadley/devtools">devtools</a> and Jim Hester’s <a href="http://github.com/jimhester/withr">withr</a>, to make it easier for you to install R pagkages hosted on {{Private}}’s installation of GitHub, and also to make it easier to work outside of {{Private}}.</p>
+<p>As with everything in R, there is some up-front cost to setting up your “ecosystem”. However, once you have everything set up, “it just works”.</p>
+<div id="access-to-private-github" class="section level2">
+<h2>Access to {{Private}} GitHub</h2>
+<p>If you are reading this, you likely already have access. To make sure (or to help others), point your favorite browser to: <a href="https://%7B%7Bprivate_host%7D" class="uri">https://{{private_host}</a>}, and make sure that you have an operational account.</p>
+<div id="installing-r-packages" class="section level3">
+<h3>Installing R Packages</h3>
+<p>To install R packages from {{Private}} GitHub, you will not need to install git. You will need only to be able to access the {{Private}} GitHub API.</p>
+<div id="personal-access-token" class="section level4">
+<h4>Personal Access Token</h4>
+<p>This is adapted from <a href="https://github.com/hadley/httr/blob/master/vignettes/api-packages.Rmd#appendix-api-key-best-practices">Hadley’s API-key best practices</a></p>
+<p>The installation function uses a Personal-Access Token (PAT) to authorize you to the GitHub API. Don’t worry, the function takes care of the details - your responsibility is to get a PAT, and to put it in a place that the installation function will expect it.</p>
+<p>Getting a PAT is easy:</p>
+<ol style="list-style-type: decimal">
+<li><p>Go to <a href="https://%7B%7Bprivate_host%7D%7D/settings/tokens">{{Private}} GitHub &gt; Settings &gt; Tokens</a>.</p></li>
+<li><p>Click the “Generate new token” button, add a description, click the “Add token” button. The defaults have always worked well for me.</p></li>
+<li><p>Copy the token to your clipboard, as this is your one-and-only chance to “see” the token on the website.</p></li>
+</ol>
+<p>Next, you have to put the token where the installation function will expect it. The best practice is to put this in a file called <code>.Renviron</code> in your home directory.</p>
+<ol style="list-style-type: decimal">
+<li><p>To determine your home directory, type <code>normalizePath(&quot;~/&quot;)</code> in the R console.</p></li>
+<li><p>Create a new text file. If in RStudio, do File &gt; New File &gt; Text file.</p></li>
+<li><p>Create a line like this:</p>
+<p><code>GITHUB_{{Private}}_PAT=blahblahblahblahblahblah</code></p>
+<p>where the name <code>GITHUB_{{Private}}_PAT</code> reminds you which API this is for an <code>blahblahblahblahblahblah</code> is your personal access token, pasted from the clipboard.</p></li>
+<li><p>Make sure the last line in the file is empty (if it isn’t, R will silently fail to load the file). If you’re using an editor that shows line numbers, there should be two lines, where the second one is empty.</p></li>
+<li><p>Save in your home directory with the filename <code>.Renviron</code>. If questioned, YES you do want to use a filename that begins with a dot <code>.</code>.</p>
+<p>Note that by default dotfiles are usually hidden. But within RStudio, the file browser will make <code>.Renviron</code> visible and therefore easy to edit in the future. Also note that on Windows, you may need to use the Windows Explorer to make the file visible in order to save it.</p></li>
+<li><p>Restart R. <code>.Renviron</code> is processed only at the start of an R session.</p></li>
+</ol>
+<p>To test that R can access this environment variable, type <code>Sys.getenv(&quot;GITHUB_{{Private}}_PAT&quot;)</code> into the console.</p>
 </div>
-<div id="github_private_pat" class="section level3">
-<h3>github_private_pat()</h3>
-<pre class="r"><code>#&#39; A github personal access token
-#&#39; Looks in env var \code{GITHUB_{{Private}}_PAT}
-#&#39;
-#&#39; This function is based on \code{\link[devtools]{github_pat}}
-#&#39;
-#&#39; @keywords internal
-#&#39; @export
-#&#39;
-github_private_pat &lt;- function(quiet = FALSE) {
-  
-  pat &lt;- Sys.getenv(&#39;GITHUB_{{Private}}_PAT&#39;)
-  if (identical(pat, &quot;&quot;)) return(NULL)
+<div id="installing-underlying-packages" class="section level4">
+<h4>Installing underlying packages</h4>
+<p>The utilr{{Private}} package relies on two other packages, devtools and httr. Installing these packages are available on CRAN, so you can enter into the R console:</p>
+<pre class="r"><code>install.packages(c(&quot;devtools&quot;, &quot;httr&quot;))</code></pre>
+<p>If your connection times out, the problem may be the {{Private}} firewall. To address this, you can add these lines to your <code>.Renviron</code> file (which you will have to update periodically)</p>
+<pre><code>no_proxy=&quot;{{private_host}}&quot;
 
-  if (!quiet) {
-    message(&quot;Using github PAT from envvar GITHUB_{{Private}}_PAT&quot;)
-  }
+https_proxy=&quot;https://&lt;proxy_url_and_port&gt;&quot;
+https_proxy_user=&quot;&lt;proxy_user&gt;:blahblahblah&quot; 
 
-  pat
+http_proxy=${https_proxy}
+http_proxy_user=${https_proxy_user}</code></pre>
+<p>Of course, you will have to adapt <code>https_proxy_user</code> to your particular needs. Remember to restart your R session so that the environment variables are read.</p>
+<p>The converse is true: you may want to download packages outside when you are outside of the {{Private}} firewall, and it might fail. In that case, you can tell R to temporarily ignore <code>https_proxy</code>, we provide a function <code>without_proxy</code>. For example:</p>
+<pre class="r"><code>without_proxy(install.packages(&quot;ggplot2&quot;))
+without_proxy(install_github(&quot;hadley/ggplot2&quot;))</code></pre>
+</div>
+<div id="installing-utilrprivate" class="section level4">
+<h4>Installing utilr{{Private}}</h4>
+<p>The last step is to install utilr{{Private}}. Unfortunately, the first-time installation of this package is non-intuitive. The good news is that it will be much easier to install subsequent packages from {{Private}} GitHub.</p>
+<p>Just copy and paste this code into your R console:</p>
+<pre class="r"><code>devtools::install_github(
+  repo = &quot;&lt;account&gt;/utilr{{Private}}&quot;, 
+  auth_token = Sys.getenv(&quot;GITHUB_{{Private}}_PAT&quot;), 
+  host = &quot;{{private_host}}/api/v3&quot;
+)</code></pre>
+<p>This should return witn an indication of success, ending with:</p>
+<pre><code>* DONE (utilr{{Private}})
+Reloading installed utilr{{Private}}</code></pre>
+<p>Now, you can just use the <code>install_github_{{Private}}()</code> function to install any R package stored at {{Private}} GitHub:</p>
+<pre class="r"><code>library(&quot;utilr{{Private}}&quot;)
+install_github_{{Private}}(&quot;&lt;account&gt;/utilr{{Private}}&quot;)</code></pre>
+<p>Again, a bit of up-front pain to make things easier going forward.</p>
+</div>
+</div>
+<div id="contributing-to-private-github" class="section level3">
+<h3>Contributing to {{Private}} GitHub</h3>
+<p>Contributing R packages to the {{Private}} community is one of the goals of this GitHub project. Although it is outside the purview of this package, if you are interested in contributing R code, either on {{Private}} GitHub, or on <em>the</em> GitHub, I would strongly urge you to refer to <a href="http://r-pkgs.had.co.nz">Hadley’s “R Packages”</a> book. The <a href="http://r-pkgs.had.co.nz/git.html">chapter on Git and GitHub</a> may be particularly interesting to you.</p>
+<p>Finally, another <a href="https://github.com/hadley/devtools#other-tips">piece of advice from Hadley</a> that I find particularly useful, and have adapted to our use.</p>
+<p>In the same way that you created an <code>.Renviron</code> file, it can be useful to create a <code>.Rprofile</code> file in your home directory as well.</p>
+<p>Here’s some useful code to put into your <code>.Rprofile</code> file:</p>
+<pre><code>.First &lt;- function() {
+  options(
+    repos = c(CRAN = &quot;https://cran.rstudio.com/&quot;),
+    browserNLdisabled = TRUE,
+    deparse.max.lines = 2)
+}
+
+if (interactive()) {
+  suppressMessages(require(&quot;devtools&quot;))
+  suppressMessages(require(&quot;utilr{{Private}}&quot;))
 }</code></pre>
+<p>This code loads the devtools and utilr{{Private}} packages into your workspace, whenever it is interactive.</p>
 </div>
-<div id="install_github_private" class="section level3">
-<h3>install_github_private()</h3>
-<pre class="r"><code>#&#39; Attempts to install a package directly from {{Private}} GitHub
-#&#39;
-#&#39; This is a wrapper around \code{devtools::\link[devtools]{install_github}}
-#&#39;
-#&#39; Allows you to install R packages from the {{Private}} instance of GitHub Enterprise.
-#&#39;
-#&#39; @param ... parameters passed to \code{devtools::\link[devtools]{install_github}}
-#&#39; @param auth_token  To to make installation easier, you may generate a personal
-#&#39;   access token (PAT) in \url{https://{{private_host}}/settings/tokens} and
-#&#39;   supply to this argument. This is safer than using a password because
-#&#39;   you can easily delete a PAT without affecting any others. Defaults to
-#&#39;   the \code{GITHUB_{{Private}}_PAT} environment variable.
-#&#39; @param host GitHub API host to use, defaults to \code{{{private_host}}/api/v3}
-#&#39; @param quiet if \code{TRUE}, suppresses output from this function
-#&#39;
-#&#39; @examples
-#&#39; \dontrun{
-#&#39; install_github_private(&quot;&lt;account&gt;/utilr{{Private}}&quot;)
-#&#39; }
-#&#39;
-#&#39; @export
-#
-install_github_private &lt;- function(..., auth_token = github_private_pat(quiet),
-                              host = &quot;{{private_host}}/api/v3&quot;,
-                              quiet = FALSE){
-  
-  ## in case of emergency, remove comments
-  # httr::with_verbose(
-    devtools::install_github(..., auth_token = auth_token, host = host)
-  # )
-}</code></pre>
-</div>
-<div id="use_github_private" class="section level3">
-<h3>use_github_private()</h3>
-<pre class="r"><code>#&#39; Attempts to connect a local repo with {{Private}} GitHub
-#&#39;
-#&#39; This is a wrapper around \code{devtools::\link[devtools]{use_github}}
-#&#39;
-#&#39; Allows you to install R packages from the {{Private}} instance of GitHub Enterprise.
-#&#39;
-#&#39; @param ... parameters passed to \code{devtools::\link[devtools]{use_github}}
-#&#39; @param auth_token  To to make installation easier, you may generate a personal
-#&#39;   access token (PAT) in \url{https://{{private_host}}/settings/tokens} and
-#&#39;   supply to this argument. This is safer than using a password because
-#&#39;   you can easily delete a PAT without affecting any others. Defaults to
-#&#39;   the \code{GITHUB_{{Private}}_PAT} environment variable.
-#&#39; @param host GitHub API host to use, defaults to \code{{{private_host}}/api/v3}
-#&#39;
-#&#39; @examples
-#&#39; \dontrun{
-#&#39; use_github_private(&quot;&quot;)
-#&#39; }
-#&#39;
-#&#39; @export
-#&#39;
-use_github_private &lt;- function(..., auth_token = github_private_pat(),
-                               host = &quot;{{private_host}}/api/v3&quot;){
-
-  devtools::use_github(..., auth_token = auth_token, host = host)
-}</code></pre>
-</div>
-<div id="without_proxy" class="section level3">
-<h3>without_proxy()</h3>
-<pre class="r"><code>#&#39; Temporarily unsets proxy environment variables
-#&#39;
-#&#39; This is a wrapper function to \code{withr::\link[withr]{with_envvar}},
-#&#39; used to change the environment temporarily, ignoring the proxy.
-#&#39;
-#&#39; While inside the {{Private}} firewall, it may be necessary to set environment variables
-#&#39; directing R to use the proxy access information outside the firewall.
-#&#39;
-#&#39; While outside the {{Private}} firewall, these proxies may not be appropriate to use -
-#&#39; in fact they may keep you from accessing the information you need. You can use this function to
-#&#39; temporarily &quot;unset&quot; the proxy environment-variables, \code{https_proxy} and \code{http_proxy}.
-#&#39;
-#&#39; @param code Code to execute in the temporary environment
-#&#39;
-#&#39; @examples
-#&#39; \dontrun{
-#&#39; without_proxy(install_github_private(&quot;&lt;account&gt;/utilr{{Private}}&quot;))
-#&#39; }
-#&#39;
-#&#39; @export
-#
-without_proxy &lt;- function(code){
-  withr::with_envvar(
-    new = list(https_proxy = &quot;&quot;, http_proxy = &quot;&quot;),
-    code = code,
-    action = &quot;replace&quot;
-  )
-}</code></pre>
 </div>
 </div>
 

@@ -12,6 +12,8 @@ In this page, I will propose how you can build a modest package that will be ada
 
 For the purposes of this discussion, I will refer to a package called `utilrPrivate` - you may wish to interpolate the name of your institution onto `Private`.
 
+At some point, I'll add some prose, but I just want to get this "out" for now.
+
 ### Readme
 
 Here's a [template README.md file](https://github.com/ijlyttle/ijlyttle.github.io/blob/master/nondim_devtools_gh_readme.md) you can use; I tried to moustache what I could.
@@ -60,7 +62,7 @@ github_private_pat <- function(quiet = FALSE) {
 #'
 #' @examples
 #' \dontrun{
-#' install_github_se("<account>/utilr{{Private}}")
+#' install_github_private("<account>/utilr{{Private}}")
 #' }
 #'
 #' @export
