@@ -14,14 +14,14 @@
 <title>Model-selection using cross-validation</title>
 
 <script src="site_libs/jquery-1.11.3/jquery.min.js"></script>
-<script src="site_libs/jqueryui-1.11.4/jquery-ui.min.js"></script>
-<link href="site_libs/tocify-1.9.1/jquery.tocify.css" rel="stylesheet" />
-<script src="site_libs/tocify-1.9.1/jquery.tocify.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <link href="site_libs/bootstrap-3.3.5/css/cerulean.min.css" rel="stylesheet" />
 <script src="site_libs/bootstrap-3.3.5/js/bootstrap.min.js"></script>
 <script src="site_libs/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
 <script src="site_libs/bootstrap-3.3.5/shim/respond.min.js"></script>
+<script src="site_libs/jqueryui-1.11.4/jquery-ui.min.js"></script>
+<link href="site_libs/tocify-1.9.1/jquery.tocify.css" rel="stylesheet" />
+<script src="site_libs/tocify-1.9.1/jquery.tocify.js"></script>
 
 <style type="text/css">code{white-space: pre;}</style>
 <link rel="stylesheet"
@@ -96,6 +96,7 @@ button.code-folding-btn:focus {
   outline: none;
 }
 </style>
+
 
 <style type="text/css">
 /* padding for bootstrap navbar */
@@ -290,6 +291,9 @@ div.tocify {
   </a>
   <ul class="dropdown-menu" role="menu">
     <li class="dropdown-header">Ingest</li>
+    <li>
+      <a href="ingest_api_client_design.html">API-client design</a>
+    </li>
     <li class="dropdown-header">Tidy</li>
     <li class="dropdown-header">Transform</li>
     <li class="dropdown-header">Visualize</li>
@@ -304,6 +308,9 @@ div.tocify {
       <a href="model_bootstrap_parameter.html">Parameter-assessment using bootstrapping</a>
     </li>
     <li class="dropdown-header">Communicate</li>
+    <li>
+      <a href="communicate_custom_html_document_format_r_markdown.html">Custom html-document formats for R Markdown</a>
+    </li>
   </ul>
 </li>
 <li class="dropdown">
@@ -315,9 +322,7 @@ div.tocify {
   <ul class="dropdown-menu" role="menu">
     <li class="dropdown-header">Introduction</li>
     <li class="dropdown-header">Dates and times</li>
-    <li class="dropdown-header">API-client design</li>
     <li class="dropdown-header">Makefiles for project manangement</li>
-    <li class="dropdown-header">Custom R Markdown formats</li>
   </ul>
 </li>
 <li class="dropdown">
@@ -363,9 +368,7 @@ library(&quot;modelr&quot;)
 library(&quot;dplyr&quot;)
 library(&quot;purrr&quot;)
 library(&quot;tidyr&quot;)
-library(&quot;pryr&quot;)
-
-knitr::opts_chunk$set(comment = &quot;&quot;) # put this into a format, once developed</code></pre>
+library(&quot;pryr&quot;)</code></pre>
 <p>There are three type of things we want to do:</p>
 <ol style="list-style-type: decimal">
 <li><p>For a given model, make an estimate of its performance. We will do this using cross-validation, employing a number of different random train/test splits; the estimate of performance for a given model will be an aggregation of the performance of each of the splits.</p></li>
@@ -392,19 +395,19 @@ knitr::opts_chunk$set(comment = &quot;&quot;) # put this into a format, once dev
     y = truth(x) + noise(x)
   ) %&gt;%
   print()</code></pre>
-<pre><code># A tibble: 100 x 2
+<pre><code># A tibble: 100 × 2
            x        y
        &lt;dbl&gt;    &lt;dbl&gt;
-1  0.5948925 1.849581
-2  0.2536540 1.465151
-3  0.3134184 1.545397
-4  0.6440337 2.112101
-5  0.1543273 1.313777
-6  0.6841809 1.925050
-7  0.6812021 1.739937
-8  0.1983198 1.270087
-9  0.7687480 2.065276
-10 0.5059584 1.906972
+1  0.6907018 1.797070
+2  0.9035268 1.862518
+3  0.4931883 1.804119
+4  0.5879323 1.761739
+5  0.7400521 1.899691
+6  0.3574554 1.549152
+7  0.7040876 1.892374
+8  0.3620721 1.562440
+9  0.1271176 1.292875
+10 0.3819756 1.511213
 # ... with 90 more rows</code></pre>
 <p>Of course, our first step is to visualize the dataset.</p>
 <pre class="r"><code>ggplot(df, aes(x = x, y = y)) +
@@ -419,7 +422,7 @@ knitr::opts_chunk$set(comment = &quot;&quot;) # put this into a format, once dev
   df %&gt;%
   crossv_mc(n = 50) %&gt;%
   print()</code></pre>
-<pre><code># A tibble: 50 x 3
+<pre><code># A tibble: 50 × 3
             train           test   .id
            &lt;list&gt;         &lt;list&gt; &lt;chr&gt;
 1  &lt;S3: resample&gt; &lt;S3: resample&gt;    01
@@ -439,16 +442,16 @@ knitr::opts_chunk$set(comment = &quot;&quot;) # put this into a format, once dev
  $ train:List of 1
   ..$ :List of 2
   .. ..$ data:Classes &#39;tbl_df&#39;, &#39;tbl&#39; and &#39;data.frame&#39;: 100 obs. of  2 variables:
-  .. .. ..$ x: num  0.595 0.254 0.313 0.644 0.154 ...
-  .. .. ..$ y: num  1.85 1.47 1.55 2.11 1.31 ...
-  .. ..$ idx : int  1 4 5 6 7 8 10 11 12 14 ...
+  .. .. ..$ x: num  0.691 0.904 0.493 0.588 0.74 ...
+  .. .. ..$ y: num  1.8 1.86 1.8 1.76 1.9 ...
+  .. ..$ idx : int  2 3 4 5 8 9 10 12 13 14 ...
   .. ..- attr(*, &quot;class&quot;)= chr &quot;resample&quot;
  $ test :List of 1
   ..$ :List of 2
   .. ..$ data:Classes &#39;tbl_df&#39;, &#39;tbl&#39; and &#39;data.frame&#39;: 100 obs. of  2 variables:
-  .. .. ..$ x: num  0.595 0.254 0.313 0.644 0.154 ...
-  .. .. ..$ y: num  1.85 1.47 1.55 2.11 1.31 ...
-  .. ..$ idx : int  2 3 9 13 24 39 40 41 43 48 ...
+  .. .. ..$ x: num  0.691 0.904 0.493 0.588 0.74 ...
+  .. .. ..$ y: num  1.8 1.86 1.8 1.76 1.9 ...
+  .. ..$ idx : int  1 6 7 11 16 27 36 39 40 41 ...
   .. ..- attr(*, &quot;class&quot;)= chr &quot;resample&quot;
  $ .id  : chr &quot;01&quot;</code></pre>
 <p>One thing you may notice is that both the train and test elements both <em>appear</em> to contain the entire original dataset. In fact, R keeps a single copy of the original dataframe, then uses pointers wherever it is used elsewhere in the session. For more, you can read <a href="http://adv-r.had.co.nz/memory.html#object-size">this section</a> and how I got some help in <a href="https://github.com/hadley/modelr/issues/14">this thread</a>.</p>
@@ -467,7 +470,7 @@ fn_model &lt;- function(df){
   df_split %&gt;%
   mutate(model = map(train, fn_model)) %&gt;%
   print()</code></pre>
-<pre><code># A tibble: 50 x 4
+<pre><code># A tibble: 50 × 4
             train           test   .id    model
            &lt;list&gt;         &lt;list&gt; &lt;chr&gt;   &lt;list&gt;
 1  &lt;S3: resample&gt; &lt;S3: resample&gt;    01 &lt;S3: lm&gt;
@@ -519,19 +522,19 @@ df_split_resid &lt;-
   select(.id, split, pred, resp, resid) %&gt;%
   unnest() %&gt;%
   print()</code></pre>
-<pre><code># A tibble: 5,000 x 5
-     .id split     pred     resp        resid
-   &lt;chr&gt; &lt;chr&gt;    &lt;dbl&gt;    &lt;dbl&gt;        &lt;dbl&gt;
-1     01 train 1.773503 1.849581 -0.076078329
-2     01 train 1.824684 2.112101 -0.287416618
-3     01 train 1.314646 1.313777  0.000868507
-4     01 train 1.866498 1.925050 -0.058551619
-5     01 train 1.863396 1.739937  0.123459174
-6     01 train 1.360465 1.270087  0.090377478
-7     01 train 1.680876 1.906972 -0.226095413
-8     01 train 1.485176 1.573730 -0.088554436
-9     01 train 1.444580 1.521045 -0.076465121
-10    01 train 1.154393 1.098760  0.055633041
+<pre><code># A tibble: 5,000 × 5
+     .id split     pred      resp        resid
+   &lt;chr&gt; &lt;chr&gt;    &lt;dbl&gt;     &lt;dbl&gt;        &lt;dbl&gt;
+1     01 train 2.031221 1.8625178  0.168702999
+2     01 train 1.626594 1.8041191 -0.177525085
+3     01 train 1.720019 1.7617386 -0.041719391
+4     01 train 1.870022 1.8996912 -0.029669671
+5     01 train 1.497303 1.5624401 -0.065137135
+6     01 train 1.265619 1.2928754 -0.027256354
+7     01 train 1.516929 1.5112128  0.005716672
+8     01 train 1.911335 1.7728667  0.138468558
+9     01 train 2.028496 2.0118611  0.016635180
+10    01 train 1.149358 0.9904177  0.158940347
 # ... with 4,990 more rows</code></pre>
 <p>The thing we are interested to do is to compare the performance of models on their trianing sets with their proformance on their test sets. One way we can do this is to make qualitative assesments of the kernel density of the residuals.</p>
 <pre class="r"><code>ggplot(df_split_resid, aes(x = resid, color = split, group = paste(split, .id))) +
@@ -553,19 +556,19 @@ df_split_resid &lt;-
   ) %&gt;%
   ungroup() %&gt;%
   print()</code></pre>
-<pre><code># A tibble: 100 x 3
-     .id split      rmse
-   &lt;chr&gt; &lt;chr&gt;     &lt;dbl&gt;
-1     01  test 0.1159149
-2     01 train 0.1122840
-3     02  test 0.1441683
-4     02 train 0.1039552
-5     03  test 0.1036025
-6     03 train 0.1154678
-7     04  test 0.1234363
-8     04 train 0.1106317
-9     05  test 0.1422095
-10    05 train 0.1070378
+<pre><code># A tibble: 100 × 3
+     .id split       rmse
+   &lt;chr&gt; &lt;chr&gt;      &lt;dbl&gt;
+1     01  test 0.10615289
+2     01 train 0.12293299
+3     02  test 0.10509013
+4     02 train 0.12313770
+5     03  test 0.08787982
+6     03 train 0.12659950
+7     04  test 0.11367102
+8     04 train 0.12140640
+9     05  test 0.11392645
+10    05 train 0.12108145
 # ... with 90 more rows</code></pre>
 <p>We can visualize this summary.</p>
 <pre class="r"><code>ggplot(df_split_rmse, aes(x = &quot;linear&quot;, y = rmse)) +
@@ -608,7 +611,7 @@ df_split_resid &lt;-
     &quot;five&quot;,  make_model(5)
   ) %&gt;% 
   print()</code></pre>
-<pre><code># A tibble: 5 x 2
+<pre><code># A tibble: 5 × 2
   model_name model_creator
        &lt;chr&gt;        &lt;list&gt;
 1        one         &lt;fun&gt;
@@ -624,7 +627,7 @@ df_split_resid &lt;-
   left_join(df_split, by = &quot;.id&quot;) %&gt;%
   left_join(df_model, by = &quot;model_name&quot;) %&gt;%
   print()</code></pre>
-<pre><code># A tibble: 250 x 5
+<pre><code># A tibble: 250 × 5
      .id model_name          train           test model_creator
    &lt;chr&gt;      &lt;chr&gt;         &lt;list&gt;         &lt;list&gt;        &lt;list&gt;
 1     01        one &lt;S3: resample&gt; &lt;S3: resample&gt;         &lt;fun&gt;
@@ -649,7 +652,7 @@ df_sample_model_created &lt;-
     model = map2(train, model_creator, make_model)
   ) %&gt;%
   print()</code></pre>
-<pre><code># A tibble: 250 x 6
+<pre><code># A tibble: 250 × 6
      .id model_name          train           test model_creator    model
    &lt;chr&gt;      &lt;chr&gt;         &lt;list&gt;         &lt;list&gt;        &lt;list&gt;   &lt;list&gt;
 1     01        one &lt;S3: resample&gt; &lt;S3: resample&gt;         &lt;fun&gt; &lt;S3: lm&gt;
@@ -675,19 +678,19 @@ df_sample_model_created &lt;-
   unnest() %&gt;%
   mutate(resid = pred - resp) %&gt;%
   print()</code></pre>
-<pre><code># A tibble: 25,000 x 6
-     .id model_name split     pred     resp        resid
-   &lt;chr&gt;      &lt;chr&gt; &lt;chr&gt;    &lt;dbl&gt;    &lt;dbl&gt;        &lt;dbl&gt;
-1     01        one train 1.773503 1.849581 -0.076078329
-2     01        one train 1.824684 2.112101 -0.287416618
-3     01        one train 1.314646 1.313777  0.000868507
-4     01        one train 1.866498 1.925050 -0.058551619
-5     01        one train 1.863396 1.739937  0.123459174
-6     01        one train 1.360465 1.270087  0.090377478
-7     01        one train 1.680876 1.906972 -0.226095413
-8     01        one train 1.485176 1.573730 -0.088554436
-9     01        one train 1.444580 1.521045 -0.076465121
-10    01        one train 1.154393 1.098760  0.055633041
+<pre><code># A tibble: 25,000 × 6
+     .id model_name split     pred      resp        resid
+   &lt;chr&gt;      &lt;chr&gt; &lt;chr&gt;    &lt;dbl&gt;     &lt;dbl&gt;        &lt;dbl&gt;
+1     01        one train 2.031221 1.8625178  0.168702999
+2     01        one train 1.626594 1.8041191 -0.177525085
+3     01        one train 1.720019 1.7617386 -0.041719391
+4     01        one train 1.870022 1.8996912 -0.029669671
+5     01        one train 1.497303 1.5624401 -0.065137135
+6     01        one train 1.265619 1.2928754 -0.027256354
+7     01        one train 1.516929 1.5112128  0.005716672
+8     01        one train 1.911335 1.7728667  0.138468558
+9     01        one train 2.028496 2.0118611  0.016635180
+10    01        one train 1.149358 0.9904177  0.158940347
 # ... with 24,990 more rows</code></pre>
 <p>And look at some kernel-density distributions:</p>
 <pre class="r"><code>df_sample_resid %&gt;%
@@ -710,19 +713,19 @@ df_sample_model_created &lt;-
   ) %&gt;%
   ungroup() %&gt;%
   print()</code></pre>
-<pre><code># A tibble: 500 x 4
+<pre><code># A tibble: 500 × 4
      .id model_name split       rmse
    &lt;chr&gt;      &lt;chr&gt; &lt;chr&gt;      &lt;dbl&gt;
-1     01       five  test 0.09720140
-2     01       five train 0.08983364
-3     01       four  test 0.09798906
-4     01       four train 0.09120485
-5     01        one  test 0.11591489
-6     01        one train 0.11228400
-7     01      three  test 0.09325565
-8     01      three train 0.09240958
-9     01        two  test 0.09209063
-10    01        two train 0.09248380
+1     01       five  test 0.08796694
+2     01       five train 0.09017604
+3     01       four  test 0.08671989
+4     01       four train 0.09022954
+5     01        one  test 0.10615289
+6     01        one train 0.12293299
+7     01      three  test 0.08743338
+8     01      three train 0.09029576
+9     01        two  test 0.08730683
+10    01        two train 0.09031520
 # ... with 490 more rows</code></pre>
 <pre class="r"><code>df_sample_rmse %&gt;%
   mutate(model_name = factor(model_name, levels = c(&quot;one&quot;, &quot;two&quot;, &quot;three&quot;, &quot;four&quot;, &quot;five&quot;))) %&gt;%
@@ -773,7 +776,7 @@ df_logistic &lt;-
   df_logistic %&gt;%
   crossv_mc(n = 50) %&gt;%
   print()</code></pre>
-<pre><code># A tibble: 50 x 3
+<pre><code># A tibble: 50 × 3
             train           test   .id
            &lt;list&gt;         &lt;list&gt; &lt;chr&gt;
 1  &lt;S3: resample&gt; &lt;S3: resample&gt;    01
@@ -811,7 +814,7 @@ df_logistic_model_one &lt;-
   df_logistic_cv %&gt;%
   mutate(model = map(train, model_one)) %&gt;%
   print()</code></pre>
-<pre><code># A tibble: 50 x 4
+<pre><code># A tibble: 50 × 4
             train           test   .id     model
            &lt;list&gt;         &lt;list&gt; &lt;chr&gt;    &lt;list&gt;
 1  &lt;S3: resample&gt; &lt;S3: resample&gt;    01 &lt;S3: glm&gt;
@@ -846,19 +849,19 @@ df_logistic_resid_one &lt;-
   select(.id, split, pred, resp, is_misclass) %&gt;%
   unnest() %&gt;%
   print()</code></pre>
-<pre><code># A tibble: 50,000 x 5
+<pre><code># A tibble: 50,000 × 5
      .id split       pred  resp is_misclass
    &lt;chr&gt; &lt;chr&gt;      &lt;dbl&gt; &lt;lgl&gt;       &lt;lgl&gt;
-1     01 train -8.6780668 FALSE       FALSE
-2     01 train -8.1524276 FALSE       FALSE
-3     01 train -1.2842883 FALSE       FALSE
-4     01 train  1.0364425 FALSE        TRUE
-5     01 train  0.7618618  TRUE       FALSE
-6     01 train -5.2294967 FALSE       FALSE
-7     01 train -1.6492961 FALSE       FALSE
-8     01 train  0.6758856 FALSE        TRUE
-9     01 train  1.7617568  TRUE       FALSE
-10    01 train -2.7140858 FALSE       FALSE
+1     01 train -2.6220329 FALSE       FALSE
+2     01 train -1.8897498 FALSE       FALSE
+3     01 train  4.8400262  TRUE       FALSE
+4     01 train -6.4145738 FALSE       FALSE
+5     01 train -5.5534762 FALSE       FALSE
+6     01 train  4.0700650  TRUE       FALSE
+7     01 train -2.4946647 FALSE       FALSE
+8     01 train -1.1431084  TRUE        TRUE
+9     01 train -9.8104924 FALSE       FALSE
+10    01 train -0.4884299  TRUE        TRUE
 # ... with 49,990 more rows</code></pre>
 <p>This is going to be a real experiment. What if we looked at the density of miscalssifications as a function of prediction?</p>
 <p>We expect to have most of our misclassifications near where the log odds are zero.</p>
@@ -881,19 +884,19 @@ df_logistic_resid_one &lt;-
   ) %&gt;%
   ungroup() %&gt;%
   print()</code></pre>
-<pre><code># A tibble: 100 x 3
+<pre><code># A tibble: 100 × 3
      .id split misclassification_rate
    &lt;chr&gt; &lt;chr&gt;                  &lt;dbl&gt;
 1     01  test             0.09950249
-2     01 train             0.08886108
-3     02  test             0.05970149
-4     02 train             0.09511890
-5     03  test             0.07462687
-6     03 train             0.09762203
-7     04  test             0.09950249
-8     04 train             0.08385482
-9     05  test             0.09452736
-10    05 train             0.09011264
+2     01 train             0.07884856
+3     02  test             0.07462687
+4     02 train             0.08385482
+5     03  test             0.10447761
+6     03 train             0.07509387
+7     04  test             0.07462687
+8     04 train             0.08260325
+9     05  test             0.09950249
+10    05 train             0.07759700
 # ... with 90 more rows</code></pre>
 <pre class="r"><code>ggplot(df_logistic_misclass_one, aes(x = &quot;one_one&quot;, y = misclassification_rate)) +
   geom_point(
@@ -916,7 +919,7 @@ df_logistic_resid_one &lt;-
     &quot;one_three&quot;,  make_model_logistic(order_x = 1, order_y = 3)
   ) %&gt;% 
   print()</code></pre>
-<pre><code># A tibble: 6 x 2
+<pre><code># A tibble: 6 × 2
   model_name model_creator
        &lt;chr&gt;        &lt;list&gt;
 1    one_one         &lt;fun&gt;
@@ -932,7 +935,7 @@ df_logistic_resid_one &lt;-
   left_join(df_model_logistic, by = &quot;model_name&quot;) %&gt;%
   mutate(model = map2(train, model_creator, make_model)) %&gt;%
   print()</code></pre>
-<pre><code># A tibble: 300 x 6
+<pre><code># A tibble: 300 × 6
      .id model_name          train           test model_creator     model
    &lt;chr&gt;      &lt;chr&gt;         &lt;list&gt;         &lt;list&gt;        &lt;list&gt;    &lt;list&gt;
 1     01    one_one &lt;S3: resample&gt; &lt;S3: resample&gt;         &lt;fun&gt; &lt;S3: glm&gt;
@@ -957,19 +960,19 @@ df_logistic_resid_one &lt;-
   select(.id, model_name, split, pred, is_misclass) %&gt;%
   unnest() %&gt;%
   print()</code></pre>
-<pre><code># A tibble: 300,000 x 5
+<pre><code># A tibble: 300,000 × 5
      .id model_name split       pred is_misclass
    &lt;chr&gt;      &lt;chr&gt; &lt;chr&gt;      &lt;dbl&gt;       &lt;lgl&gt;
-1     01    one_one train -8.6780668       FALSE
-2     01    one_one train -8.1524276       FALSE
-3     01    one_one train -1.2842883       FALSE
-4     01    one_one train  1.0364425        TRUE
-5     01    one_one train  0.7618618       FALSE
-6     01    one_one train -5.2294967       FALSE
-7     01    one_one train -1.6492961       FALSE
-8     01    one_one train  0.6758856        TRUE
-9     01    one_one train  1.7617568       FALSE
-10    01    one_one train -2.7140858       FALSE
+1     01    one_one train -2.6220329       FALSE
+2     01    one_one train -1.8897498       FALSE
+3     01    one_one train  4.8400262       FALSE
+4     01    one_one train -6.4145738       FALSE
+5     01    one_one train -5.5534762       FALSE
+6     01    one_one train  4.0700650       FALSE
+7     01    one_one train -2.4946647       FALSE
+8     01    one_one train -1.1431084        TRUE
+9     01    one_one train -9.8104924       FALSE
+10    01    one_one train -0.4884299        TRUE
 # ... with 299,990 more rows</code></pre>
 <pre class="r"><code>levels_model_logistic &lt;- 
   c(&quot;one_one&quot;, &quot;one_two&quot;, &quot;two_one&quot;, &quot;one_three&quot;, &quot;two_two&quot;, &quot;three_one&quot;)
@@ -995,19 +998,19 @@ df_sample_logistic_resid %&gt;%
   ) %&gt;%
   ungroup() %&gt;%
   print()</code></pre>
-<pre><code># A tibble: 600 x 4
+<pre><code># A tibble: 600 × 4
      .id model_name split misclassification_rate
    &lt;chr&gt;      &lt;chr&gt; &lt;chr&gt;                  &lt;dbl&gt;
 1     01    one_one  test             0.09950249
-2     01    one_one train             0.08886108
-3     01  one_three  test             0.08457711
-4     01  one_three train             0.07259074
-5     01    one_two  test             0.07960199
-6     01    one_two train             0.07884856
-7     01  three_one  test             0.07462687
-8     01  three_one train             0.07259074
-9     01    two_one  test             0.07462687
-10    01    two_one train             0.07259074
+2     01    one_one train             0.07884856
+3     01  one_three  test             0.07960199
+4     01  one_three train             0.06382979
+5     01    one_two  test             0.08457711
+6     01    one_two train             0.07759700
+7     01  three_one  test             0.09950249
+8     01  three_one train             0.06758448
+9     01    two_one  test             0.08955224
+10    01    two_one train             0.07133917
 # ... with 590 more rows</code></pre>
 <pre class="r"><code>df_logistic_misclass %&gt;%
   mutate(model_name = factor(model_name, levels = levels_model_logistic)) %&gt;%
@@ -1030,7 +1033,7 @@ df_sample_logistic_resid %&gt;%
 <div id="session" class="section level2">
 <h2>Session</h2>
 <pre class="r"><code>session_info()</code></pre>
-<pre><code>Session info --------------------------------------------------------------</code></pre>
+<pre><code>Session info -----------------------------------------------------------------------------</code></pre>
 <pre><code> setting  value                       
  version  R version 3.3.1 (2016-06-21)
  system   x86_64, darwin13.4.0        
@@ -1038,41 +1041,42 @@ df_sample_logistic_resid %&gt;%
  language (EN)                        
  collate  en_US.UTF-8                 
  tz       America/Chicago             
- date     2016-08-04                  </code></pre>
-<pre><code>Packages ------------------------------------------------------------------</code></pre>
-<pre><code> package    * version    date       source                        
- assertthat   0.1        2013-12-06 CRAN (R 3.3.0)                
- codetools    0.2-14     2015-07-15 CRAN (R 3.3.1)                
- colorspace   1.2-6      2015-03-11 CRAN (R 3.3.0)                
- DBI          0.4-1      2016-05-08 CRAN (R 3.3.0)                
- devtools   * 1.12.0     2016-06-24 CRAN (R 3.3.0)                
- digest       0.6.9      2016-01-08 CRAN (R 3.3.0)                
- dplyr      * 0.5.0      2016-06-24 cran (@0.5.0)                 
- evaluate     0.9        2016-04-29 CRAN (R 3.3.0)                
- formatR      1.4        2016-05-09 CRAN (R 3.3.0)                
- ggplot2    * 2.1.0      2016-03-01 CRAN (R 3.3.0)                
- gtable       0.2.0      2016-02-26 CRAN (R 3.3.0)                
- htmltools    0.3.5      2016-03-21 CRAN (R 3.3.0)                
- knitr        1.13       2016-05-09 CRAN (R 3.3.0)                
- labeling     0.3        2014-08-23 CRAN (R 3.3.0)                
- lazyeval     0.2.0      2016-06-12 CRAN (R 3.3.0)                
- magrittr     1.5        2014-11-22 CRAN (R 3.3.0)                
- memoise      1.0.0      2016-01-29 CRAN (R 3.3.0)                
- modelr     * 0.0.0.9000 2016-08-04 Github (hadley/modelr@e27f9ee)
- munsell      0.4.3      2016-02-13 CRAN (R 3.3.0)                
- plyr         1.8.4      2016-06-08 cran (@1.8.4)                 
- pryr       * 0.1.2      2015-06-20 CRAN (R 3.3.0)                
- purrr      * 0.2.2.9000 2016-08-04 Github (hadley/purrr@d162445) 
- R6           2.1.2      2016-01-26 CRAN (R 3.3.0)                
- Rcpp         0.12.6     2016-07-19 cran (@0.12.6)                
- rmarkdown    1.0        2016-07-08 CRAN (R 3.3.0)                
- scales       0.4.0      2016-02-26 CRAN (R 3.3.0)                
- stringi      1.1.1      2016-05-27 CRAN (R 3.3.0)                
- stringr      1.0.0      2015-04-30 CRAN (R 3.3.0)                
- tibble     * 1.1        2016-07-04 cran (@1.1)                   
- tidyr      * 0.5.1.9001 2016-08-04 Github (hadley/tidyr@5a70625) 
- withr        1.0.2      2016-06-20 CRAN (R 3.3.0)                
- yaml         2.1.13     2014-06-12 CRAN (R 3.3.0)                </code></pre>
+ date     2016-09-04                  </code></pre>
+<pre><code>Packages ---------------------------------------------------------------------------------</code></pre>
+<pre><code> package         * version    date       source                            
+ assertthat        0.1        2013-12-06 CRAN (R 3.3.0)                    
+ codetools         0.2-14     2015-07-15 CRAN (R 3.3.1)                    
+ colorspace        1.2-6      2015-03-11 CRAN (R 3.3.0)                    
+ DBI               0.4-1      2016-05-08 CRAN (R 3.3.0)                    
+ devtools        * 1.12.0     2016-06-24 CRAN (R 3.3.0)                    
+ digest            0.6.10     2016-08-02 cran (@0.6.10)                    
+ dplyr           * 0.5.0      2016-06-24 cran (@0.5.0)                     
+ evaluate          0.9        2016-04-29 CRAN (R 3.3.0)                    
+ formatR           1.4        2016-05-09 CRAN (R 3.3.0)                    
+ ggplot2         * 2.1.0      2016-03-01 CRAN (R 3.3.0)                    
+ gtable            0.2.0      2016-02-26 CRAN (R 3.3.0)                    
+ htmlDocumentIJL   0.0.0.9000 2016-09-04 local                             
+ htmltools         0.3.5      2016-03-21 CRAN (R 3.3.0)                    
+ knitr             1.14       2016-08-13 cran (@1.14)                      
+ labeling          0.3        2014-08-23 CRAN (R 3.3.0)                    
+ lazyeval          0.2.0      2016-06-12 CRAN (R 3.3.0)                    
+ magrittr          1.5        2014-11-22 CRAN (R 3.3.0)                    
+ memoise           1.0.0      2016-01-29 CRAN (R 3.3.0)                    
+ modelr          * 0.0.0.9000 2016-08-04 Github (hadley/modelr@e27f9ee)    
+ munsell           0.4.3      2016-02-13 CRAN (R 3.3.0)                    
+ plyr              1.8.4      2016-06-08 cran (@1.8.4)                     
+ pryr            * 0.1.2      2015-06-20 CRAN (R 3.3.0)                    
+ purrr           * 0.2.2.9000 2016-08-29 Github (hadley/purrr@a7afcca)     
+ R6                2.1.2      2016-01-26 CRAN (R 3.3.0)                    
+ Rcpp              0.12.6     2016-07-19 cran (@0.12.6)                    
+ rmarkdown         1.0.9013   2016-09-03 Github (rstudio/rmarkdown@5d05a39)
+ scales            0.4.0      2016-02-26 CRAN (R 3.3.0)                    
+ stringi           1.1.1      2016-05-27 CRAN (R 3.3.0)                    
+ stringr           1.1.0      2016-08-19 CRAN (R 3.3.0)                    
+ tibble          * 1.2        2016-08-26 CRAN (R 3.3.0)                    
+ tidyr           * 0.6.0      2016-08-12 CRAN (R 3.3.0)                    
+ withr             1.0.2      2016-06-20 CRAN (R 3.3.0)                    
+ yaml              2.1.13     2014-06-12 CRAN (R 3.3.0)                    </code></pre>
 </div>
 
 
@@ -1088,6 +1092,7 @@ df_sample_logistic_resid %&gt;%
 $(document).ready(function () {
   $('tr.header').parent('thead').parent('table').addClass('table table-condensed');
 });
+
 
 </script>
 

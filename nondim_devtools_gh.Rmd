@@ -1,0 +1,17 @@
+---
+title: "Devtools and GitHub Enterprise"
+---
+
+As you know, the devtools package makes it super-easier to develop and deploy packages. Thanks to Hadley Wickham, installing a package from GitHub is as easy as `devtools::install_github()`; thanks to Jenny Bryan, starting your own package using GitHub as simply a call to `devtools::use_github()`. 
+
+If you work at an institution with an instance of GitHub Enterprise, the devtools package can still be useful to you, but there are some things you can do to help everyone at your institution use *your* instance of GitHub just as easily as you use github.com.
+
+In this page, I will propose how you can build a modest package that will be adapted to your instution and github instance. To be clear, I am not claiming what I am outlining here to be a best practice. I am claiming only that it is *a* practice. Your feedback will be very welcome to improve this practice.
+
+## Package
+
+The package that I developed for my company is called `utilrSE`, as I work for Schneider Electric. For the purposes of this discussion, I will refer to a package called `utilrPrivate` - you may wish to interpolate the name of your institution onto `Private`.
+
+### Readme
+
+Here's a [template README file]() you can use; I tried to moustache what I could.

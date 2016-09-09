@@ -1,0 +1,178 @@
+---
+title: "Custom html-formats for R Markdown"
+---
+
+Leading up to the UseR! 2016 conference, I had been looking forward to attending Yihui Xie's tutorial on R Markdown - there were a few things I had wanted to ask him on how to make custom formats using `html_document()`. 
+
+Then, a funny thing happened. A few days before the conference started, I got an email from Yihui, sent also to [Karl Broman](http://kbroman.org/). Yihui's visa had been delayed, so he could not attend the conference: could one or both of us deliver his tutorial material?
+
+Given everything Yihui has done for the community, the only possible answer was "yes". So Karl and I divvied up his slides and each up us did our own deep-dive into our material. As it happened, I was to deliver the material that dealt with my questions - so this was a first-rate opportunity to get it figured out!
+
+In days before the tutorial, with help from Yihui, I got most of it worked out, and in the days and weeks to follow, we sorted out the rest. This page is a distillation of what I had been wanting to figure out.
+
+As I write the rest of this out, I remember fondly the four (somewhat panicked) days of getting everything sorted out with Karl and Yihui. A word of thanks here to Karl for putting together the framework that let us bring tutorial in for a landing. Also, thanks to Yihui for thinking of me as someome not completely unsuitable to fill in. And a huge thanks to the participants in the tutorial for their patience.
+
+## References
+
+RStudio has a great series of articles:
+
+[HTML document format](http://rmarkdown.rstudio.com/html_document_format.html)
+
+[Customizing HTML formats](http://rmarkdown.rstudio.com/developer_custom_formats.html)
+
+[Websites](http://rmarkdown.rstudio.com/rmarkdown_websites.html)
+
+Yihui's book.
+
+Get the tutorial slides, etc.
+
+This is a great place to get started on the concepts I try to demonstrate here.
+
+Further: https://github.com/juba/rmdformats
+
+```{r echo=FALSE}
+# inspiration: http://yihui.name/knitr/demo/pretty/
+get_fun <- function(name){
+  capture.output(dump(name, ''))
+}
+```
+
+### Packages
+
+First, it important to note that this is based on the dev version of R Markdown - pending the next CRAN release.
+
+```{r}
+# devtools::install_github("rstudio/rmarkdown")
+```
+
+To follow along here, you will need to install a package, user2016docdemo, that has a series of functions that return custom formats.
+
+```{r}
+# devtools::install_github("ijlyttle/user2016docdemo")
+library("user2016docdemo") 
+library("listviewer")
+library("magrittr")
+library("knitr")
+```
+
+## Examining the format
+
+It will be a lot easier to figure out how customize things if we understand (a little bit) what is going on. Even though R Markdown is capable of so much more, for the purposes of this discussion we will assume that you are interested only in producing an html file. 
+
+### Format list
+
+The `rmarkdown::render()` function has two jobs: (1) to knit the R Markdown file into a Markdown file, (2) to use pandoc to turn the Markdown file into an html file. In order to do this, `render()` needs a set of instructions - this set of instructions is a format, and it is stored as a list.
+
+The purpose of the  `rmarkdown::html_document()` function is to help you to generate this list. Using Kent Russell's listviewer package, let's look at the default format returned by `html_document()` function.
+
+```{r}
+rmarkdown::html_document() %>%
+  jsonedit(mode = "view")
+```
+
+For our purposes, we are most-interested in the first parts of the list, entitled "knitr" and "pandoc". You may wish to click around to see what's what.
+
+### Format function
+
+The job of any R Markdown format function, including your custom format functions, is to return the format list. 
+
+
+```{r}
+rmarkdown::html_document %>%
+  formals() %>%
+  jsonedit(mode = "view")
+```
+
+These should look familiar, as they are these are parameters that you use to put in a yaml header at the start of an R Markdown document. For example:
+
+```yaml
+title: "A Tale of Two Cities"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+```
+
+When `rmarkdown::render()` is run (either from the knit button, or from the command line), it passes along the yaml information "under" `html_document:` to the `rmarkdown::html_document()` function. It bears repeating that the best way to figure out how to construct your yaml header is to look at the help page for `html_document()`.
+
+As you design your custom formats, keep in mind that you will be able to pass arguments to your format function using the yaml header.
+
+## Custom formats
+
+The biggest biggest mental-block (as least for me) to making an easily deployable custom-format is  building a package. The reason this is necessary is that when we hit the knit button in RStudio, the `render()` function runs in a new R session - this is for a very good reason. The only way I know to get the `render()` function the "list of instructions" is to provide a package function that returns it. 
+
+### Package
+
+Luckily, Hadley has made it a whole lot easier for all of us to develop packages. I'd highly recommend his book on building packages, available online: http://r-pkgs.had.co.nz/.
+
+Here's a minimal list of steps.
+
+- open an empty project
+- `devtools::create(".")`
+- `devtools::use_package("rmarkdown")`
+- `devtools::use_readme_rmd()`
+- `devtools::use_mit_license()` (if that's your thing)
+- `use_github()` (assumes you have a github.com account)
+- write and save some custom functions (rest of this section)
+- hit the build button to install locally
+- commit and push to GitHub every so often
+
+### Simplest possible (do nothing) 
+
+The simplest possible custom format is a a function that simply passes *everything* on to `rmarkdown::html_document()`. Here's the source code for the simplest-possible custom-format function, one that simply passes everything along to `rmarkdown::html_document()`
+
+```{r code=get_fun("html_doc_0"), eval=FALSE}
+```
+
+When we look at the list of instructions returned by the default, we see that it is (hopefully) no different than before.
+
+```{r}
+user2016docdemo::html_doc_0() %>%
+  jsonedit(mode = "view")
+```
+
+At some point, I'd like to put some screenshots here of a sample page - or maybe just link to the results.
+
+#### Change some defaults
+
+One simple thing that you can do is to change some of the defaults of the `html_document()` format:
+
+```{r code=get_fun("html_doc_1"), eval=FALSE}
+```
+
+Similary, we can look at what the function returns:
+
+```{r}
+user2016docdemo::html_doc_1() %>%
+  jsonedit(mode = "view")
+```
+
+It is not immedately apparent that there is a difference between the output of `html_doc_0()` and `html_doc_1()`. Being both stubborn and not-so-bright, I spent way too much time tracking down where we can find the difference. Here it is: the format list has some elements that are functions; [functions have environments](http://adv-r.had.co.nz/Environments.html). Therein lies the difference. Let's look at the environment of one of the functions returned as a part of `html_doc_1()`:
+
+```{r}
+html_doc_1() %>%
+  `[[`("pre_processor") %>%
+  environment() %>%
+  `[[`("overlay") %>%
+  environment() %>%
+  as.list() %>%
+  jsonedit(mode = "view")
+```
+
+We see our information in the `args` element, `code_folding` has a value of `"show"` and `theme` has a value of `"readable"`. 
+
+It is probably more useful to demonstrate what this does, rather than show the details of environments, so put a link here eventually.
+
+### Make your own theme
+
+Here's where we can have some fun. If the standard themes are not what you need (or want), you can create your own bootstrap theme at http://bootstrap-live-customizer.com/.
+
+This is a re
+
+### Add your own knitr options
+
+## Session info
+
+```{r}
+devtools::session_info()
+```

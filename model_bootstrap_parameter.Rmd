@@ -12,8 +12,6 @@ library("purrr")
 library("tidyr")
 library("pryr")
 library("broom")
-
-knitr::opts_chunk$set(comment = "") # put this into a format, once developed
 ```
 
 In this page, we want to take models we have selected using cross-validation, then assess their parameters using bootstrapping.

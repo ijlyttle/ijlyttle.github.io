@@ -11,8 +11,6 @@ library("dplyr")
 library("purrr")
 library("tidyr")
 library("pryr")
-
-knitr::opts_chunk$set(comment = "") # put this into a format, once developed
 ```
 
 There are three type of things we want to do:

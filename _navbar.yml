@@ -3,6 +3,8 @@ right:
   - text: "Dimensions"
     menu:
       - text: "Ingest"
+      - text: "API-client design"
+        # href: ingest_api_client_design.html      
       - text: "Tidy"
       - text: "Transform"
       - text: "Visualize"
@@ -14,13 +16,15 @@ right:
       - text: "Parameter-assessment using bootstrapping"
         href: model_bootstrap_parameter.html
       - text: "Communicate"
+      - text: "Custom html-document formats for R Markdown"
+        href: communicate_custom_html_document_format_r_markdown.html
   - text: "Non-dimensions"
     menu:
       - text: "Introduction"
+      - text: "Devtools and GitHub Enterprise"
+        href: nondim_devtools_gh.html
       - text: "Dates and times"
-      - text: "API-client design"
       - text: "Makefiles for project manangement"
-      - text: "Custom R Markdown formats"
   - text: "Package portfolio"
     menu:
       - text: "vembedr"

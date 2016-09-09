@@ -1,6 +1,6 @@
 output_dir: "."
 output:
-  html_document:
+  htmlDocumentIJL::ijlyttle_github_io:
     self_contained: false
     lib_dir: site_libs
     theme: cerulean
