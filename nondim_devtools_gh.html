@@ -362,7 +362,133 @@ div.tocify {
 </div>
 
 
+<p>As you know, the devtools package makes it super-easier to develop and deploy packages. Thanks to Hadley Wickham, installing a package from GitHub is as easy as <code>devtools::install_github()</code>; thanks to Jenny Bryan, starting your own package using GitHub as simply a call to <code>devtools::use_github()</code>.</p>
+<p>If you work at an institution with an instance of GitHub Enterprise, the devtools package can still be useful to you, but there are some things you can do to help everyone at your institution use <em>your</em> instance of GitHub just as easily as you use github.com.</p>
+<p>In this page, I will propose how you can build a modest package that will be adapted to your instution and github instance. To be clear, I am not claiming this to be a best practice. I am claiming only that it is <em>a</em> practice. Your feedback will be very welcome to improve this practice.</p>
+<div id="package" class="section level2">
+<h2>Package</h2>
+<p>For the purposes of this discussion, I will refer to a package called <code>utilrPrivate</code> - you may wish to interpolate the name of your institution onto <code>Private</code>.</p>
+<div id="readme" class="section level3">
+<h3>Readme</h3>
+<p>Here’s a <a href="https://github.com/ijlyttle/ijlyttle.github.io/blob/master/nondim_devtools_gh_readme.md">template README.md file</a> you can use; I tried to moustache what I could.</p>
+</div>
+<div id="github_private_pat" class="section level3">
+<h3>github_private_pat()</h3>
+<pre class="r"><code>#&#39; A github personal access token
+#&#39; Looks in env var \code{GITHUB_{{Private}}_PAT}
+#&#39;
+#&#39; This function is based on \code{\link[devtools]{github_pat}}
+#&#39;
+#&#39; @keywords internal
+#&#39; @export
+#&#39;
+github_private_pat &lt;- function(quiet = FALSE) {
+  
+  pat &lt;- Sys.getenv(&#39;GITHUB_{{Private}}_PAT&#39;)
+  if (identical(pat, &quot;&quot;)) return(NULL)
 
+  if (!quiet) {
+    message(&quot;Using github PAT from envvar GITHUB_{{Private}}_PAT&quot;)
+  }
+
+  pat
+}</code></pre>
+</div>
+<div id="install_github_private" class="section level3">
+<h3>install_github_private()</h3>
+<pre class="r"><code>#&#39; Attempts to install a package directly from {{Private}} GitHub
+#&#39;
+#&#39; This is a wrapper around \code{devtools::\link[devtools]{install_github}}
+#&#39;
+#&#39; Allows you to install R packages from the {{Private}} instance of GitHub Enterprise.
+#&#39;
+#&#39; @param ... parameters passed to \code{devtools::\link[devtools]{install_github}}
+#&#39; @param auth_token  To to make installation easier, you may generate a personal
+#&#39;   access token (PAT) in \url{https://{{private_host}}/settings/tokens} and
+#&#39;   supply to this argument. This is safer than using a password because
+#&#39;   you can easily delete a PAT without affecting any others. Defaults to
+#&#39;   the \code{GITHUB_{{Private}}_PAT} environment variable.
+#&#39; @param host GitHub API host to use, defaults to \code{{{private_host}}/api/v3}
+#&#39; @param quiet if \code{TRUE}, suppresses output from this function
+#&#39;
+#&#39; @examples
+#&#39; \dontrun{
+#&#39; install_github_se(&quot;&lt;account&gt;/utilr{{Private}}&quot;)
+#&#39; }
+#&#39;
+#&#39; @export
+#
+install_github_private &lt;- function(..., auth_token = github_private_pat(quiet),
+                              host = &quot;{{private_host}}/api/v3&quot;,
+                              quiet = FALSE){
+  
+  ## in case of emergency, remove comments
+  # httr::with_verbose(
+    devtools::install_github(..., auth_token = auth_token, host = host)
+  # )
+}</code></pre>
+</div>
+<div id="use_github_private" class="section level3">
+<h3>use_github_private()</h3>
+<pre class="r"><code>#&#39; Attempts to connect a local repo with {{Private}} GitHub
+#&#39;
+#&#39; This is a wrapper around \code{devtools::\link[devtools]{use_github}}
+#&#39;
+#&#39; Allows you to install R packages from the {{Private}} instance of GitHub Enterprise.
+#&#39;
+#&#39; @param ... parameters passed to \code{devtools::\link[devtools]{use_github}}
+#&#39; @param auth_token  To to make installation easier, you may generate a personal
+#&#39;   access token (PAT) in \url{https://{{private_host}}/settings/tokens} and
+#&#39;   supply to this argument. This is safer than using a password because
+#&#39;   you can easily delete a PAT without affecting any others. Defaults to
+#&#39;   the \code{GITHUB_{{Private}}_PAT} environment variable.
+#&#39; @param host GitHub API host to use, defaults to \code{{{private_host}}/api/v3}
+#&#39;
+#&#39; @examples
+#&#39; \dontrun{
+#&#39; use_github_private(&quot;&quot;)
+#&#39; }
+#&#39;
+#&#39; @export
+#&#39;
+use_github_private &lt;- function(..., auth_token = github_private_pat(),
+                               host = &quot;{{private_host}}/api/v3&quot;){
+
+  devtools::use_github(..., auth_token = auth_token, host = host)
+}</code></pre>
+</div>
+<div id="without_proxy" class="section level3">
+<h3>without_proxy()</h3>
+<pre class="r"><code>#&#39; Temporarily unsets proxy environment variables
+#&#39;
+#&#39; This is a wrapper function to \code{withr::\link[withr]{with_envvar}},
+#&#39; used to change the environment temporarily, ignoring the proxy.
+#&#39;
+#&#39; While inside the {{Private}} firewall, it may be necessary to set environment variables
+#&#39; directing R to use the proxy access information outside the firewall.
+#&#39;
+#&#39; While outside the {{Private}} firewall, these proxies may not be appropriate to use -
+#&#39; in fact they may keep you from accessing the information you need. You can use this function to
+#&#39; temporarily &quot;unset&quot; the proxy environment-variables, \code{https_proxy} and \code{http_proxy}.
+#&#39;
+#&#39; @param code Code to execute in the temporary environment
+#&#39;
+#&#39; @examples
+#&#39; \dontrun{
+#&#39; without_proxy(install_github_private(&quot;&lt;account&gt;/utilr{{Private}}&quot;))
+#&#39; }
+#&#39;
+#&#39; @export
+#
+without_proxy &lt;- function(code){
+  withr::with_envvar(
+    new = list(https_proxy = &quot;&quot;, http_proxy = &quot;&quot;),
+    code = code,
+    action = &quot;replace&quot;
+  )
+}</code></pre>
+</div>
+</div>
 
 
 

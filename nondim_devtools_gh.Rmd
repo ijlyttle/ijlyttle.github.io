@@ -6,12 +6,138 @@ As you know, the devtools package makes it super-easier to develop and deploy pa
 
 If you work at an institution with an instance of GitHub Enterprise, the devtools package can still be useful to you, but there are some things you can do to help everyone at your institution use *your* instance of GitHub just as easily as you use github.com.
 
-In this page, I will propose how you can build a modest package that will be adapted to your instution and github instance. To be clear, I am not claiming what I am outlining here to be a best practice. I am claiming only that it is *a* practice. Your feedback will be very welcome to improve this practice.
+In this page, I will propose how you can build a modest package that will be adapted to your instution and github instance. To be clear, I am not claiming this to be a best practice. I am claiming only that it is *a* practice. Your feedback will be very welcome to improve this practice.
 
 ## Package
 
-The package that I developed for my company is called `utilrSE`, as I work for Schneider Electric. For the purposes of this discussion, I will refer to a package called `utilrPrivate` - you may wish to interpolate the name of your institution onto `Private`.
+For the purposes of this discussion, I will refer to a package called `utilrPrivate` - you may wish to interpolate the name of your institution onto `Private`.
 
 ### Readme
 
-Here's a [template README file]() you can use; I tried to moustache what I could.
+Here's a [template README.md file](https://github.com/ijlyttle/ijlyttle.github.io/blob/master/nondim_devtools_gh_readme.md) you can use; I tried to moustache what I could.
+
+### github_private_pat()
+
+```{r eval=FALSE}
+#' A github personal access token
+#' Looks in env var \code{GITHUB_{{Private}}_PAT}
+#'
+#' This function is based on \code{\link[devtools]{github_pat}}
+#'
+#' @keywords internal
+#' @export
+#'
+github_private_pat <- function(quiet = FALSE) {
+  
+  pat <- Sys.getenv('GITHUB_{{Private}}_PAT')
+  if (identical(pat, "")) return(NULL)
+
+  if (!quiet) {
+    message("Using github PAT from envvar GITHUB_{{Private}}_PAT")
+  }
+
+  pat
+}
+```
+
+### install_github_private()
+
+```{r eval=FALSE}
+#' Attempts to install a package directly from {{Private}} GitHub
+#'
+#' This is a wrapper around \code{devtools::\link[devtools]{install_github}}
+#'
+#' Allows you to install R packages from the {{Private}} instance of GitHub Enterprise.
+#'
+#' @param ... parameters passed to \code{devtools::\link[devtools]{install_github}}
+#' @param auth_token  To to make installation easier, you may generate a personal
+#'   access token (PAT) in \url{https://{{private_host}}/settings/tokens} and
+#'   supply to this argument. This is safer than using a password because
+#'   you can easily delete a PAT without affecting any others. Defaults to
+#'   the \code{GITHUB_{{Private}}_PAT} environment variable.
+#' @param host GitHub API host to use, defaults to \code{{{private_host}}/api/v3}
+#' @param quiet if \code{TRUE}, suppresses output from this function
+#'
+#' @examples
+#' \dontrun{
+#' install_github_se("<account>/utilr{{Private}}")
+#' }
+#'
+#' @export
+#
+install_github_private <- function(..., auth_token = github_private_pat(quiet),
+                              host = "{{private_host}}/api/v3",
+                              quiet = FALSE){
+  
+  ## in case of emergency, remove comments
+  # httr::with_verbose(
+    devtools::install_github(..., auth_token = auth_token, host = host)
+  # )
+}
+```
+
+### use_github_private()
+
+```{r}
+#' Attempts to connect a local repo with {{Private}} GitHub
+#'
+#' This is a wrapper around \code{devtools::\link[devtools]{use_github}}
+#'
+#' Allows you to install R packages from the {{Private}} instance of GitHub Enterprise.
+#'
+#' @param ... parameters passed to \code{devtools::\link[devtools]{use_github}}
+#' @param auth_token  To to make installation easier, you may generate a personal
+#'   access token (PAT) in \url{https://{{private_host}}/settings/tokens} and
+#'   supply to this argument. This is safer than using a password because
+#'   you can easily delete a PAT without affecting any others. Defaults to
+#'   the \code{GITHUB_{{Private}}_PAT} environment variable.
+#' @param host GitHub API host to use, defaults to \code{{{private_host}}/api/v3}
+#'
+#' @examples
+#' \dontrun{
+#' use_github_private("")
+#' }
+#'
+#' @export
+#'
+use_github_private <- function(..., auth_token = github_private_pat(),
+                               host = "{{private_host}}/api/v3"){
+
+  devtools::use_github(..., auth_token = auth_token, host = host)
+}
+```
+
+### without_proxy()
+
+```{r eval=FALSE}
+#' Temporarily unsets proxy environment variables
+#'
+#' This is a wrapper function to \code{withr::\link[withr]{with_envvar}},
+#' used to change the environment temporarily, ignoring the proxy.
+#'
+#' While inside the {{Private}} firewall, it may be necessary to set environment variables
+#' directing R to use the proxy access information outside the firewall.
+#'
+#' While outside the {{Private}} firewall, these proxies may not be appropriate to use -
+#' in fact they may keep you from accessing the information you need. You can use this function to
+#' temporarily "unset" the proxy environment-variables, \code{https_proxy} and \code{http_proxy}.
+#'
+#' @param code Code to execute in the temporary environment
+#'
+#' @examples
+#' \dontrun{
+#' without_proxy(install_github_private("<account>/utilr{{Private}}"))
+#' }
+#'
+#' @export
+#
+without_proxy <- function(code){
+  withr::with_envvar(
+    new = list(https_proxy = "", http_proxy = ""),
+    code = code,
+    action = "replace"
+  )
+}
+```
+
+
