@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+
+<meta charset="utf-8">
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="generator" content="pandoc" />
+
+
+
+
+<title>Of caravans and cross-validation</title>
+
+<script src="site_libs/jquery-1.11.3/jquery.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="site_libs/bootstrap-3.3.5/css/cerulean.min.css" rel="stylesheet" />
+<script src="site_libs/bootstrap-3.3.5/js/bootstrap.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/respond.min.js"></script>
+<script src="site_libs/jqueryui-1.11.4/jquery-ui.min.js"></script>
+<link href="site_libs/tocify-1.9.1/jquery.tocify.css" rel="stylesheet" />
+<script src="site_libs/tocify-1.9.1/jquery.tocify.js"></script>
+
+<style type="text/css">code{white-space: pre;}</style>
+<link rel="stylesheet"
+      href="site_libs/highlight/default.css"
+      type="text/css" />
+<script src="site_libs/highlight/highlight.js"></script>
+<style type="text/css">
+  pre:not([class]) {
+    background-color: white;
+  }
+</style>
+<script type="text/javascript">
+if (window.hljs && document.readyState && document.readyState === "complete") {
+   window.setTimeout(function() {
+      hljs.initHighlighting();
+   }, 0);
+}
+</script>
+
+
+
+<style type="text/css">
+h1 {
+  font-size: 34px;
+}
+h1.title {
+  font-size: 38px;
+}
+h2 {
+  font-size: 30px;
+}
+h3 {
+  font-size: 24px;
+}
+h4 {
+  font-size: 18px;
+}
+h5 {
+  font-size: 16px;
+}
+h6 {
+  font-size: 12px;
+}
+.table th:not([align]) {
+  text-align: left;
+}
+</style>
+
+
+</head>
+
+<body>
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+code {
+  color: inherit;
+  background-color: rgba(0, 0, 0, 0.04);
+}
+img {
+  max-width:100%;
+  height: auto;
+}
+.tabbed-pane {
+  padding-top: 12px;
+}
+button.code-folding-btn:focus {
+  outline: none;
+}
+</style>
+
+
+<style type="text/css">
+/* padding for bootstrap navbar */
+body {
+  padding-top: 51px;
+  padding-bottom: 40px;
+}
+/* offset scroll position for anchor links (for fixed navbar)  */
+.section h1 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+
+.section h2 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+.section h3 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+.section h4 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+.section h5 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+.section h6 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+</style>
+
+<script>
+// manage active state of menu based on current page
+$(document).ready(function () {
+  // active menu anchor
+  href = window.location.pathname
+  href = href.substr(href.lastIndexOf('/') + 1)
+  if (href === "")
+    href = "index.html";
+  var menuAnchor = $('a[href="' + href + '"]');
+
+  // mark it active
+  menuAnchor.parent().addClass('active');
+
+  // if it's got a parent navbar menu mark it active as well
+  menuAnchor.closest('li.dropdown').addClass('active');
+});
+</script>
+
+
+<div class="container-fluid main-container">
+
+<!-- tabsets -->
+<script src="site_libs/navigation-1.1/tabsets.js"></script>
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+</script>
+
+<!-- code folding -->
+<script src="site_libs/navigation-1.1/codefolding.js"></script>
+<script>
+$(document).ready(function () {
+  window.initializeCodeFolding("show" === "show");
+});
+</script>
+
+
+
+
+<script>
+$(document).ready(function ()  {
+
+    // move toc-ignore selectors from section div to header
+    $('div.section.toc-ignore')
+        .removeClass('toc-ignore')
+        .children('h1,h2,h3,h4,h5').addClass('toc-ignore');
+
+    // establish options
+    var options = {
+      selectors: "h1,h2,h3",
+      theme: "bootstrap3",
+      context: '.toc-content',
+      hashGenerator: function (text) {
+        return text.replace(/[.\/?&!#<>]/g, '').replace(/\s/g, '_').toLowerCase();
+      },
+      ignoreSelector: ".toc-ignore",
+      scrollTo: 0
+    };
+    options.showAndHide = true;
+    options.smoothScroll = true;
+
+    // tocify
+    var toc = $("#TOC").tocify(options).data("toc-tocify");
+});
+</script>
+
+<style type="text/css">
+
+#TOC {
+  margin: 25px 0px 20px 0px;
+}
+@media (max-width: 768px) {
+#TOC {
+  position: relative;
+  width: 100%;
+}
+}
+
+
+.toc-content {
+  padding-left: 30px;
+  padding-right: 40px;
+}
+
+div.main-container {
+  max-width: 1200px;
+}
+
+div.tocify {
+  width: 20%;
+  max-width: 260px;
+  max-height: 85%;
+}
+
+@media (min-width: 768px) and (max-width: 991px) {
+  div.tocify {
+    width: 25%;
+  }
+}
+
+@media (max-width: 767px) {
+  div.tocify {
+    width: 100%;
+    max-width: none;
+  }
+}
+
+.tocify ul, .tocify li {
+  line-height: 20px;
+}
+
+.tocify-subheader .tocify-item {
+  font-size: 0.9em;
+  padding-left: 5px;
+}
+
+.tocify .list-group-item {
+  border-radius: 0px;
+}
+
+
+</style>
+
+<!-- setup 3col/9col grid for toc_float and main content  -->
+<div class="row-fluid">
+<div class="col-xs-12 col-sm-4 col-md-3">
+<div id="TOC" class="tocify">
+</div>
+</div>
+
+<div class="toc-content col-xs-12 col-sm-8 col-md-9">
+
+
+
+
+<div class="navbar navbar-default  navbar-fixed-top" role="navigation">
+  <div class="container">
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="index.html">Wanderings through the tidyverse</a>
+    </div>
+    <div id="navbar" class="navbar-collapse collapse">
+      <ul class="nav navbar-nav">
+        
+      </ul>
+      <ul class="nav navbar-nav navbar-right">
+        <li class="dropdown">
+  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">
+    Dimensions
+     
+    <span class="caret"></span>
+  </a>
+  <ul class="dropdown-menu" role="menu">
+    <li class="dropdown-header">Ingest</li>
+    <li class="dropdown-header">API-client design</li>
+    <li class="dropdown-header">Tidy</li>
+    <li class="dropdown-header">Transform</li>
+    <li class="dropdown-header">Visualize</li>
+    <li class="dropdown-header">Model</li>
+    <li>
+      <a href="model_introduction.html">Introduction</a>
+    </li>
+    <li>
+      <a href="model_cv_selection.html">Model-selection using cross-validation</a>
+    </li>
+    <li>
+      <a href="model_bootstrap_parameter.html">Parameter-assessment using bootstrapping</a>
+    </li>
+    <li>
+      <a href="model_caravans_cv.html">Of caravans and cross-validation</a>
+    </li>
+    <li class="dropdown-header">Communicate</li>
+    <li>
+      <a href="communicate_custom_html_document_format_r_markdown.html">Custom html-document formats for R Markdown</a>
+    </li>
+  </ul>
+</li>
+<li class="dropdown">
+  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">
+    Non-dimensions
+     
+    <span class="caret"></span>
+  </a>
+  <ul class="dropdown-menu" role="menu">
+    <li class="dropdown-header">Introduction</li>
+    <li>
+      <a href="nondim_devtools_gh.html">Devtools and GitHub Enterprise</a>
+    </li>
+    <li class="dropdown-header">Dates and times</li>
+    <li class="dropdown-header">Makefiles for project manangement</li>
+  </ul>
+</li>
+<li class="dropdown">
+  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">
+    Package portfolio
+     
+    <span class="caret"></span>
+  </a>
+  <ul class="dropdown-menu" role="menu">
+    <li class="dropdown-header">vembedr</li>
+    <li class="dropdown-header">bsplus</li>
+    <li class="dropdown-header">shinypod</li>
+    <li class="dropdown-header">humidr</li>
+    <li class="dropdown-header">groundTemp</li>
+  </ul>
+</li>
+      </ul>
+    </div><!--/.nav-collapse -->
+  </div><!--/.container -->
+</div><!--/.navbar -->
+
+<div class="fluid-row" id="header">
+
+<div class="btn-group pull-right">
+<button type="button" class="btn btn-default btn-xs dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span>Code</span> <span class="caret"></span></button>
+<ul class="dropdown-menu" style="min-width: 50px;">
+<li><a id="rmd-show-all-code" href="#">Show All Code</a></li>
+<li><a id="rmd-hide-all-code" href="#">Hide All Code</a></li>
+</ul>
+</div>
+
+
+
+<h1 class="title toc-ignore">Of caravans and cross-validation</h1>
+
+</div>
+
+
+<p>I’m writing this up because <a href="https://github.com/AmeliaMN/tidy-islr">Amelia McNamara</a> is working on this really cool project, <a href="https://github.com/SmithCollege-SDS/tidy-islr">rebooting the ISLR labs using the tidyverse</a>. This is a meagre attempt to pitch in.</p>
+<p>The first to answer the call was David Robinson, who, of course, <a href="http://stackoverflow.com/questions/39536056/tidy-method-of-testing-model-parameters">answered the question comprehensively</a> in less time than it would take me to even ponder the question over a cup of coffee.</p>
+<p>I will look at a slightly different question, building on Amelia’s and David’s foundation with an eye on visualization. I know the stuff on cross-validation is coming later in the book, I hope this will be OK.</p>
+<pre class="r"><code>library(&quot;ISLR&quot;)
+library(&quot;class&quot;)
+library(&quot;assertthat&quot;)
+library(&quot;tidyverse&quot;)</code></pre>
+<pre><code>Loading tidyverse: ggplot2
+Loading tidyverse: tibble
+Loading tidyverse: tidyr
+Loading tidyverse: readr
+Loading tidyverse: purrr
+Loading tidyverse: dplyr</code></pre>
+<pre><code>Conflicts with tidy packages -------------------------------------------------------------</code></pre>
+<pre><code>filter():   dplyr, stats
+has_name(): tibble, assertthat
+lag():      dplyr, stats</code></pre>
+<pre class="r"><code>library(&quot;modelr&quot;)
+library(&quot;broom&quot;)</code></pre>
+<pre><code>
+Attaching package: &#39;broom&#39;</code></pre>
+<pre><code>The following object is masked from &#39;package:modelr&#39;:
+
+    bootstrap</code></pre>
+<pre class="r"><code>library(&quot;ggbeeswarm&quot;)
+library(&quot;viridis&quot;)</code></pre>
+<div id="introduction" class="section level2">
+<h2>Introduction</h2>
+<p>Following Amelia McNamara, we are looking at the <a href="https://github.com/AmeliaMN/tidy-islr/blob/master/lab3/lab3.Rmd">ISLR Caravan example</a> (pp. 164–167).</p>
+<p>The goal is to apply KNN (and if we are feeling particularly ambitious, logistic regression) to the <code>Caravan</code> dataset from the ISLR package. The first thing I’m going to do is make a copy of it as a tibble, then see what we’ve got.</p>
+<pre class="r"><code>caravan &lt;- 
+  as_tibble(ISLR::Caravan) %&gt;%
+  print()</code></pre>
+<pre><code># A tibble: 5,822 × 86
+   MOSTYPE MAANTHUI MGEMOMV MGEMLEEF MOSHOOFD MGODRK MGODPR MGODOV MGODGE MRELGE MRELSA
+*    &lt;dbl&gt;    &lt;dbl&gt;   &lt;dbl&gt;    &lt;dbl&gt;    &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt;
+1       33        1       3        2        8      0      5      1      3      7      0
+2       37        1       2        2        8      1      4      1      4      6      2
+3       37        1       2        2        8      0      4      2      4      3      2
+4        9        1       3        3        3      2      3      2      4      5      2
+5       40        1       4        2       10      1      4      1      4      7      1
+6       23        1       2        1        5      0      5      0      5      0      6
+7       39        2       3        2        9      2      2      0      5      7      2
+8       33        1       2        3        8      0      7      0      2      7      2
+9       33        1       2        4        8      0      1      3      6      6      0
+10      11        2       3        3        3      3      5      0      2      7      0
+# ... with 5,812 more rows, and 75 more variables: MRELOV &lt;dbl&gt;, MFALLEEN &lt;dbl&gt;,
+#   MFGEKIND &lt;dbl&gt;, MFWEKIND &lt;dbl&gt;, MOPLHOOG &lt;dbl&gt;, MOPLMIDD &lt;dbl&gt;, MOPLLAAG &lt;dbl&gt;,
+#   MBERHOOG &lt;dbl&gt;, MBERZELF &lt;dbl&gt;, MBERBOER &lt;dbl&gt;, MBERMIDD &lt;dbl&gt;, MBERARBG &lt;dbl&gt;,
+#   MBERARBO &lt;dbl&gt;, MSKA &lt;dbl&gt;, MSKB1 &lt;dbl&gt;, MSKB2 &lt;dbl&gt;, MSKC &lt;dbl&gt;, MSKD &lt;dbl&gt;,
+#   MHHUUR &lt;dbl&gt;, MHKOOP &lt;dbl&gt;, MAUT1 &lt;dbl&gt;, MAUT2 &lt;dbl&gt;, MAUT0 &lt;dbl&gt;, MZFONDS &lt;dbl&gt;,
+#   MZPART &lt;dbl&gt;, MINKM30 &lt;dbl&gt;, MINK3045 &lt;dbl&gt;, MINK4575 &lt;dbl&gt;, MINK7512 &lt;dbl&gt;,
+#   MINK123M &lt;dbl&gt;, MINKGEM &lt;dbl&gt;, MKOOPKLA &lt;dbl&gt;, PWAPART &lt;dbl&gt;, PWABEDR &lt;dbl&gt;,
+#   PWALAND &lt;dbl&gt;, PPERSAUT &lt;dbl&gt;, PBESAUT &lt;dbl&gt;, PMOTSCO &lt;dbl&gt;, PVRAAUT &lt;dbl&gt;,
+#   PAANHANG &lt;dbl&gt;, PTRACTOR &lt;dbl&gt;, PWERKT &lt;dbl&gt;, PBROM &lt;dbl&gt;, PLEVEN &lt;dbl&gt;,
+#   PPERSONG &lt;dbl&gt;, PGEZONG &lt;dbl&gt;, PWAOREG &lt;dbl&gt;, PBRAND &lt;dbl&gt;, PZEILPL &lt;dbl&gt;,
+#   PPLEZIER &lt;dbl&gt;, PFIETS &lt;dbl&gt;, PINBOED &lt;dbl&gt;, PBYSTAND &lt;dbl&gt;, AWAPART &lt;dbl&gt;,
+#   AWABEDR &lt;dbl&gt;, AWALAND &lt;dbl&gt;, APERSAUT &lt;dbl&gt;, ABESAUT &lt;dbl&gt;, AMOTSCO &lt;dbl&gt;,
+#   AVRAAUT &lt;dbl&gt;, AAANHANG &lt;dbl&gt;, ATRACTOR &lt;dbl&gt;, AWERKT &lt;dbl&gt;, ABROM &lt;dbl&gt;,
+#   ALEVEN &lt;dbl&gt;, APERSONG &lt;dbl&gt;, AGEZONG &lt;dbl&gt;, AWAOREG &lt;dbl&gt;, ABRAND &lt;dbl&gt;,
+#   AZEILPL &lt;dbl&gt;, APLEZIER &lt;dbl&gt;, AFIETS &lt;dbl&gt;, AINBOED &lt;dbl&gt;, ABYSTAND &lt;dbl&gt;,
+#   Purchase &lt;fctr&gt;</code></pre>
+<p>Yikes! That’s a lot of variables. Following Amelia, let’s standardise the numeric variables of the dataframe.</p>
+<pre class="r"><code>caravan_standard &lt;- 
+  caravan %&gt;%
+  select(-Purchase) %&gt;%
+  dmap(~as.vector(scale(.x))) %&gt;%
+  print() </code></pre>
+<pre><code># A tibble: 5,822 × 85
+       MOSTYPE   MAANTHUI    MGEMOMV    MGEMLEEF   MOSHOOFD     MGODRK     MGODPR
+         &lt;dbl&gt;      &lt;dbl&gt;      &lt;dbl&gt;       &lt;dbl&gt;      &lt;dbl&gt;      &lt;dbl&gt;      &lt;dbl&gt;
+1   0.68084775 -0.2725565  0.4066617 -1.21685949  0.7793384 -0.6942510  0.2174254
+2   0.99221162 -0.2725565 -0.8594262 -1.21685949  0.7793384  0.3025256 -0.3653787
+3   0.99221162 -0.2725565 -0.8594262 -1.21685949  0.7793384 -0.6942510 -0.3653787
+4  -1.18733547 -0.2725565  0.4066617  0.01075374 -0.9708962  1.2993023 -0.9481828
+5   1.22573452 -0.2725565  1.6727497 -1.21685949  1.4794323  0.3025256 -0.3653787
+6  -0.09756193 -0.2725565 -0.8594262 -2.44447272 -0.2708024 -0.6942510  0.2174254
+7   1.14789355  2.1914562  0.4066617 -1.21685949  1.1293853  1.2993023 -1.5309868
+8   0.68084775 -0.2725565 -0.8594262  0.01075374  0.7793384 -0.6942510  1.3830335
+9   0.68084775 -0.2725565 -0.8594262  1.23836697  0.7793384 -0.6942510 -2.1137909
+10 -1.03165354  2.1914562  0.4066617  0.01075374 -0.9708962  2.2960789  0.2174254
+# ... with 5,812 more rows, and 78 more variables: MGODOV &lt;dbl&gt;, MGODGE &lt;dbl&gt;,
+#   MRELGE &lt;dbl&gt;, MRELSA &lt;dbl&gt;, MRELOV &lt;dbl&gt;, MFALLEEN &lt;dbl&gt;, MFGEKIND &lt;dbl&gt;,
+#   MFWEKIND &lt;dbl&gt;, MOPLHOOG &lt;dbl&gt;, MOPLMIDD &lt;dbl&gt;, MOPLLAAG &lt;dbl&gt;, MBERHOOG &lt;dbl&gt;,
+#   MBERZELF &lt;dbl&gt;, MBERBOER &lt;dbl&gt;, MBERMIDD &lt;dbl&gt;, MBERARBG &lt;dbl&gt;, MBERARBO &lt;dbl&gt;,
+#   MSKA &lt;dbl&gt;, MSKB1 &lt;dbl&gt;, MSKB2 &lt;dbl&gt;, MSKC &lt;dbl&gt;, MSKD &lt;dbl&gt;, MHHUUR &lt;dbl&gt;,
+#   MHKOOP &lt;dbl&gt;, MAUT1 &lt;dbl&gt;, MAUT2 &lt;dbl&gt;, MAUT0 &lt;dbl&gt;, MZFONDS &lt;dbl&gt;, MZPART &lt;dbl&gt;,
+#   MINKM30 &lt;dbl&gt;, MINK3045 &lt;dbl&gt;, MINK4575 &lt;dbl&gt;, MINK7512 &lt;dbl&gt;, MINK123M &lt;dbl&gt;,
+#   MINKGEM &lt;dbl&gt;, MKOOPKLA &lt;dbl&gt;, PWAPART &lt;dbl&gt;, PWABEDR &lt;dbl&gt;, PWALAND &lt;dbl&gt;,
+#   PPERSAUT &lt;dbl&gt;, PBESAUT &lt;dbl&gt;, PMOTSCO &lt;dbl&gt;, PVRAAUT &lt;dbl&gt;, PAANHANG &lt;dbl&gt;,
+#   PTRACTOR &lt;dbl&gt;, PWERKT &lt;dbl&gt;, PBROM &lt;dbl&gt;, PLEVEN &lt;dbl&gt;, PPERSONG &lt;dbl&gt;,
+#   PGEZONG &lt;dbl&gt;, PWAOREG &lt;dbl&gt;, PBRAND &lt;dbl&gt;, PZEILPL &lt;dbl&gt;, PPLEZIER &lt;dbl&gt;,
+#   PFIETS &lt;dbl&gt;, PINBOED &lt;dbl&gt;, PBYSTAND &lt;dbl&gt;, AWAPART &lt;dbl&gt;, AWABEDR &lt;dbl&gt;,
+#   AWALAND &lt;dbl&gt;, APERSAUT &lt;dbl&gt;, ABESAUT &lt;dbl&gt;, AMOTSCO &lt;dbl&gt;, AVRAAUT &lt;dbl&gt;,
+#   AAANHANG &lt;dbl&gt;, ATRACTOR &lt;dbl&gt;, AWERKT &lt;dbl&gt;, ABROM &lt;dbl&gt;, ALEVEN &lt;dbl&gt;,
+#   APERSONG &lt;dbl&gt;, AGEZONG &lt;dbl&gt;, AWAOREG &lt;dbl&gt;, ABRAND &lt;dbl&gt;, AZEILPL &lt;dbl&gt;,
+#   APLEZIER &lt;dbl&gt;, AFIETS &lt;dbl&gt;, AINBOED &lt;dbl&gt;, ABYSTAND &lt;dbl&gt;</code></pre>
+<p>Now, let’s follow David by using k-fold cross-validation. So, I sat here staring at the monitor for twenty minutes, because I could not see how to go forward with modelr’s framework for cross-validation using <code>knn()</code>. I could not see how to get there from here. So I went to run some errands, and a solution appeared (as happens from time to time).</p>
+<p>The problem (I think) is that the API to the <code>knn()</code> function is different than for the <code>lm()</code> function. My solution is to back-up, and to write a function to wrap to the <code>knn()</code> function so that the API will be “close enough”. As I am starting to learn, “write a function” seems to be the way out of a <em>lot</em> of R pickles.</p>
+<p>To act like <code>lm()</code>, we need to keep the target variable in a data-frame alongside the predictor variables. So let’s do that.</p>
+<pre class="r"><code>caravan_standard_new &lt;- 
+  caravan %&gt;%
+  dmap_if(is.numeric, ~as.vector(scale(.x))) %&gt;%
+  print() </code></pre>
+<pre><code># A tibble: 5,822 × 86
+       MOSTYPE   MAANTHUI    MGEMOMV    MGEMLEEF   MOSHOOFD     MGODRK     MGODPR
+*        &lt;dbl&gt;      &lt;dbl&gt;      &lt;dbl&gt;       &lt;dbl&gt;      &lt;dbl&gt;      &lt;dbl&gt;      &lt;dbl&gt;
+1   0.68084775 -0.2725565  0.4066617 -1.21685949  0.7793384 -0.6942510  0.2174254
+2   0.99221162 -0.2725565 -0.8594262 -1.21685949  0.7793384  0.3025256 -0.3653787
+3   0.99221162 -0.2725565 -0.8594262 -1.21685949  0.7793384 -0.6942510 -0.3653787
+4  -1.18733547 -0.2725565  0.4066617  0.01075374 -0.9708962  1.2993023 -0.9481828
+5   1.22573452 -0.2725565  1.6727497 -1.21685949  1.4794323  0.3025256 -0.3653787
+6  -0.09756193 -0.2725565 -0.8594262 -2.44447272 -0.2708024 -0.6942510  0.2174254
+7   1.14789355  2.1914562  0.4066617 -1.21685949  1.1293853  1.2993023 -1.5309868
+8   0.68084775 -0.2725565 -0.8594262  0.01075374  0.7793384 -0.6942510  1.3830335
+9   0.68084775 -0.2725565 -0.8594262  1.23836697  0.7793384 -0.6942510 -2.1137909
+10 -1.03165354  2.1914562  0.4066617  0.01075374 -0.9708962  2.2960789  0.2174254
+# ... with 5,812 more rows, and 79 more variables: MGODOV &lt;dbl&gt;, MGODGE &lt;dbl&gt;,
+#   MRELGE &lt;dbl&gt;, MRELSA &lt;dbl&gt;, MRELOV &lt;dbl&gt;, MFALLEEN &lt;dbl&gt;, MFGEKIND &lt;dbl&gt;,
+#   MFWEKIND &lt;dbl&gt;, MOPLHOOG &lt;dbl&gt;, MOPLMIDD &lt;dbl&gt;, MOPLLAAG &lt;dbl&gt;, MBERHOOG &lt;dbl&gt;,
+#   MBERZELF &lt;dbl&gt;, MBERBOER &lt;dbl&gt;, MBERMIDD &lt;dbl&gt;, MBERARBG &lt;dbl&gt;, MBERARBO &lt;dbl&gt;,
+#   MSKA &lt;dbl&gt;, MSKB1 &lt;dbl&gt;, MSKB2 &lt;dbl&gt;, MSKC &lt;dbl&gt;, MSKD &lt;dbl&gt;, MHHUUR &lt;dbl&gt;,
+#   MHKOOP &lt;dbl&gt;, MAUT1 &lt;dbl&gt;, MAUT2 &lt;dbl&gt;, MAUT0 &lt;dbl&gt;, MZFONDS &lt;dbl&gt;, MZPART &lt;dbl&gt;,
+#   MINKM30 &lt;dbl&gt;, MINK3045 &lt;dbl&gt;, MINK4575 &lt;dbl&gt;, MINK7512 &lt;dbl&gt;, MINK123M &lt;dbl&gt;,
+#   MINKGEM &lt;dbl&gt;, MKOOPKLA &lt;dbl&gt;, PWAPART &lt;dbl&gt;, PWABEDR &lt;dbl&gt;, PWALAND &lt;dbl&gt;,
+#   PPERSAUT &lt;dbl&gt;, PBESAUT &lt;dbl&gt;, PMOTSCO &lt;dbl&gt;, PVRAAUT &lt;dbl&gt;, PAANHANG &lt;dbl&gt;,
+#   PTRACTOR &lt;dbl&gt;, PWERKT &lt;dbl&gt;, PBROM &lt;dbl&gt;, PLEVEN &lt;dbl&gt;, PPERSONG &lt;dbl&gt;,
+#   PGEZONG &lt;dbl&gt;, PWAOREG &lt;dbl&gt;, PBRAND &lt;dbl&gt;, PZEILPL &lt;dbl&gt;, PPLEZIER &lt;dbl&gt;,
+#   PFIETS &lt;dbl&gt;, PINBOED &lt;dbl&gt;, PBYSTAND &lt;dbl&gt;, AWAPART &lt;dbl&gt;, AWABEDR &lt;dbl&gt;,
+#   AWALAND &lt;dbl&gt;, APERSAUT &lt;dbl&gt;, ABESAUT &lt;dbl&gt;, AMOTSCO &lt;dbl&gt;, AVRAAUT &lt;dbl&gt;,
+#   AAANHANG &lt;dbl&gt;, ATRACTOR &lt;dbl&gt;, AWERKT &lt;dbl&gt;, ABROM &lt;dbl&gt;, ALEVEN &lt;dbl&gt;,
+#   APERSONG &lt;dbl&gt;, AGEZONG &lt;dbl&gt;, AWAOREG &lt;dbl&gt;, ABRAND &lt;dbl&gt;, AZEILPL &lt;dbl&gt;,
+#   APLEZIER &lt;dbl&gt;, AFIETS &lt;dbl&gt;, AINBOED &lt;dbl&gt;, ABYSTAND &lt;dbl&gt;, Purchase &lt;fctr&gt;</code></pre>
+<p>Now, let’s work on the wrapper for the <code>knn()</code> function.</p>
+<pre class="r"><code>#&#39; gets \code{class::knn()} to play nice with modelr
+#&#39;
+#&#39; @param train       dataframe, with (scaled) numeric columns for predictors
+#&#39;                    and a factor column for the target
+#&#39; @param test        dataframe, with (scaled) numeric columns for predictors
+#&#39;                    and a factor column for the target
+#&#39; @param str_target  string, indicated target column of test and train
+#&#39;                    dataframe
+#&#39; @param ...         arguments passed on to \code{class::knn()}
+#&#39;
+#&#39; @return like \code{class::knn()}, factor of classifications of test set. 
+#&#39;         \code{doubt} will be returned as \code{NA}.
+#&#39;
+knn_new &lt;- function(train, test, str_target, ...){
+  
+  # lets us use &quot;resample&quot;
+  train &lt;- as.data.frame(train)
+  test &lt;- as.data.frame(test)
+  
+  # yes, I should be able to do this using NSE, but I forgot...
+  assertthat::assert_that(str_target %in% names(train))
+  assertthat::assert_that(str_target %in% names(test)) # may not need this
+  
+  # get target vector for train dataframe
+  target_train &lt;- train[[str_target]]
+  
+  # remove target column from both dataframes
+  train[[str_target]] &lt;- NULL
+  test[[str_target]] &lt;- NULL
+  
+  class::knn(train = train, test = test, cl = target_train, ...)
+}</code></pre>
+<p>Let’s see if this thing works…</p>
+<p>Using the standard method:</p>
+<pre class="r"><code>test_caravan = caravan_standard %&gt;%
+  slice(1:1000)
+train_caravan = caravan_standard %&gt;%
+  slice(1001:5822)
+
+Purchase = caravan %&gt;%
+  select(Purchase)
+
+test_purchase = Purchase %&gt;%
+  slice(1:1000) %&gt;%
+  .$Purchase
+
+train_purchase = Purchase %&gt;%
+  slice(1001:5822) %&gt;%
+  .$Purchase</code></pre>
+<pre class="r"><code>set.seed(1)
+knn_pred = knn(train_caravan, test_caravan, train_purchase, k=1)
+mean(test_purchase != knn_pred) # KNN error rate</code></pre>
+<pre><code>[1] 0.118</code></pre>
+<pre class="r"><code>mean(test_purchase != &quot;No&quot;)  </code></pre>
+<pre><code>[1] 0.059</code></pre>
+<p>Now, let’s try with the “new” function:</p>
+<pre class="r"><code>test_caravan_new = caravan_standard_new %&gt;%
+  slice(1:1000)
+train_caravan_new = caravan_standard_new %&gt;%
+  slice(1001:5822)
+
+set.seed(1)
+knn_pred_new = knn_new(train_caravan_new, test_caravan_new, &quot;Purchase&quot;, k=1)
+mean(test_purchase != knn_pred_new) # KNN error rate</code></pre>
+<pre><code>[1] 0.118</code></pre>
+<pre class="r"><code>mean(test_purchase != &quot;No&quot;) </code></pre>
+<pre><code>[1] 0.059</code></pre>
+<p>Promising…. just to make (more) sure:</p>
+<pre class="r"><code>all(knn_pred == knn_pred_new)</code></pre>
+<pre><code>[1] TRUE</code></pre>
+<p>Whew! Next let’s use modelr to do some cross-validations:</p>
+<p>I suspect I am doing something bad here by not requiring that the proportions of the levels of the response variable are consistent among the train and test sets. I’ll leave that as an exercise for later.</p>
+<pre class="r"><code># more hackery
+get_resample_column &lt;- function(df, str_var){
+  df &lt;- as.data.frame(df)
+  df[[str_var]]
+}
+
+caravan_summary &lt;- 
+  caravan_standard_new %&gt;%
+  crossv_kfold(k = 20) %&gt;%
+  mutate(
+    pred = map2(train, test, knn_new, &quot;Purchase&quot;, k = 1),
+    resp = map(test, get_resample_column, &quot;Purchase&quot;)
+  ) %&gt;%
+  unnest(pred, resp) %&gt;%
+  group_by(.id, pred, resp) %&gt;%
+  summarise(count = n()) %&gt;%
+  print()</code></pre>
+<pre><code>Source: local data frame [78 x 4]
+Groups: .id, pred [?]
+
+     .id   pred   resp count
+   &lt;chr&gt; &lt;fctr&gt; &lt;fctr&gt; &lt;int&gt;
+1     01     No     No   259
+2     01     No    Yes    14
+3     01    Yes     No    16
+4     01    Yes    Yes     3
+5     02     No     No   258
+6     02     No    Yes    18
+7     02    Yes     No    14
+8     02    Yes    Yes     2
+9     03     No     No   251
+10    03     No    Yes    23
+# ... with 68 more rows</code></pre>
+<p>At this point, we could visualize the confusion matrix over all of the cross-validations.</p>
+<pre class="r"><code>caravan_summary %&gt;%
+  mutate(k = &quot;1&quot;) %&gt;%
+  ggplot(aes(x = k, y = count)) +
+  geom_beeswarm(alpha = 0.5) + 
+  facet_grid(pred ~ resp, scales = &quot;free&quot;)</code></pre>
+<p><img src="model_caravans_cv_files/figure-html/unnamed-chunk-7-1.png" width="672" /></p>
+<p>I don’t know if such a visualization is a useful thing or not - there are doubtless things that can be done to make it more useful, but this may revealed (to me at least) only with coffee. At the very least, I ought to label the facet axes to show which is prediction and which is response.</p>
+<p>This method can be extended to looking at different values of <span class="math inline">\(k\)</span>, as well. I will have to get to that later.</p>
+<pre class="r"><code>devtools::session_info()</code></pre>
+<pre><code>Session info -----------------------------------------------------------------------------</code></pre>
+<pre><code> setting  value                       
+ version  R version 3.3.1 (2016-06-21)
+ system   x86_64, darwin13.4.0        
+ ui       X11                         
+ language (EN)                        
+ collate  en_US.UTF-8                 
+ tz       America/Chicago             
+ date     2016-09-19                  </code></pre>
+<pre><code>Packages ---------------------------------------------------------------------------------</code></pre>
+<pre><code> package         * version    date       source                            
+ assertthat      * 0.1        2013-12-06 CRAN (R 3.3.0)                    
+ beeswarm          0.2.3      2016-04-25 CRAN (R 3.3.0)                    
+ broom           * 0.4.1      2016-06-24 cran (@0.4.1)                     
+ class           * 7.3-14     2015-08-30 CRAN (R 3.3.1)                    
+ colorspace        1.2-6      2015-03-11 CRAN (R 3.3.0)                    
+ DBI               0.5-1      2016-09-10 CRAN (R 3.3.0)                    
+ devtools          1.12.0     2016-06-24 CRAN (R 3.3.0)                    
+ digest            0.6.10     2016-08-02 cran (@0.6.10)                    
+ dplyr           * 0.5.0      2016-06-24 cran (@0.5.0)                     
+ evaluate          0.9        2016-04-29 CRAN (R 3.3.0)                    
+ formatR           1.4        2016-05-09 CRAN (R 3.3.0)                    
+ ggbeeswarm      * 0.5.0      2016-02-21 CRAN (R 3.3.0)                    
+ ggplot2         * 2.1.0      2016-03-01 CRAN (R 3.3.0)                    
+ gridExtra         2.2.1      2016-02-29 CRAN (R 3.3.0)                    
+ gtable            0.2.0      2016-02-26 CRAN (R 3.3.0)                    
+ htmlDocumentIJL   0.0.0.9000 2016-09-04 local                             
+ htmltools         0.3.5      2016-03-21 CRAN (R 3.3.0)                    
+ ISLR            * 1.0        2013-06-11 CRAN (R 3.3.0)                    
+ knitr             1.14       2016-08-13 cran (@1.14)                      
+ labeling          0.3        2014-08-23 CRAN (R 3.3.0)                    
+ lattice           0.20-33    2015-07-14 CRAN (R 3.3.1)                    
+ lazyeval          0.2.0      2016-06-12 CRAN (R 3.3.0)                    
+ magrittr          1.5        2014-11-22 CRAN (R 3.3.0)                    
+ memoise           1.0.0      2016-01-29 CRAN (R 3.3.0)                    
+ mnormt            1.5-4      2016-03-09 cran (@1.5-4)                     
+ modelr          * 0.1.0      2016-08-31 CRAN (R 3.3.0)                    
+ munsell           0.4.3      2016-02-13 CRAN (R 3.3.0)                    
+ nlme              3.1-128    2016-05-10 CRAN (R 3.3.1)                    
+ plyr              1.8.4      2016-06-08 cran (@1.8.4)                     
+ psych             1.6.6      2016-06-28 cran (@1.6.6)                     
+ purrr           * 0.2.2.9000 2016-08-29 Github (hadley/purrr@a7afcca)     
+ R6                2.1.3      2016-08-19 CRAN (R 3.3.0)                    
+ Rcpp              0.12.7     2016-09-05 cran (@0.12.7)                    
+ readr           * 1.0.0      2016-08-03 CRAN (R 3.3.0)                    
+ reshape2          1.4.1      2014-12-06 CRAN (R 3.3.0)                    
+ rmarkdown         1.0.9013   2016-09-03 Github (rstudio/rmarkdown@5d05a39)
+ scales            0.4.0      2016-02-26 CRAN (R 3.3.0)                    
+ stringi           1.1.1      2016-05-27 CRAN (R 3.3.0)                    
+ stringr           1.1.0      2016-08-19 CRAN (R 3.3.0)                    
+ tibble          * 1.2        2016-08-26 CRAN (R 3.3.0)                    
+ tidyr           * 0.6.0.9000 2016-09-07 Github (hadley/tidyr@3c9335b)     
+ tidyverse       * 0.0.0.9000 2016-09-07 Github (hadley/tidyverse@6ca05a7) 
+ vipor             0.4.3      2016-07-27 CRAN (R 3.3.0)                    
+ viridis         * 0.3.4      2016-03-12 CRAN (R 3.3.0)                    
+ withr             1.0.2      2016-06-20 CRAN (R 3.3.0)                    
+ yaml              2.1.13     2014-06-12 CRAN (R 3.3.0)                    </code></pre>
+</div>
+
+
+
+</div>
+</div>
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+$(document).ready(function () {
+  $('tr.header').parent('thead').parent('table').addClass('table table-condensed');
+});
+
+
+</script>
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

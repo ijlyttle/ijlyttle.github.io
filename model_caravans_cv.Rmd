@@ -1,0 +1,185 @@
+---
+title: Of caravans and cross-validation
+---
+
+I'm writing this up because [Amelia McNamara](https://github.com/AmeliaMN/tidy-islr) is working on this really cool project, [rebooting the ISLR labs using the tidyverse](https://github.com/SmithCollege-SDS/tidy-islr). This is a meagre attempt to pitch in.
+
+The first to answer the call was David Robinson, who, of course, [answered the question comprehensively](http://stackoverflow.com/questions/39536056/tidy-method-of-testing-model-parameters) in less time than it would take me to even ponder the question over a cup of coffee.
+
+I will look at a slightly different question, building on Amelia's and David's foundation with an eye on visualization. I know the stuff on cross-validation is coming later in the book, I hope this will be OK. 
+
+
+```{r packages}
+library("ISLR")
+library("class")
+library("assertthat")
+library("tidyverse")
+library("modelr")
+library("broom")
+library("ggbeeswarm")
+library("viridis")
+```
+
+## Introduction
+
+Following Amelia McNamara, we are looking at the [ISLR Caravan example](https://github.com/AmeliaMN/tidy-islr/blob/master/lab3/lab3.Rmd) (pp. 164--167).
+
+The goal is to apply KNN (and if we are feeling particularly ambitious, logistic regression) to the `Caravan` dataset from the ISLR package. The first thing I'm going to do is make a copy of it as a tibble, then see what we've got.
+
+```{r caravan}
+caravan <- 
+  as_tibble(ISLR::Caravan) %>%
+  print()
+```
+
+Yikes! That's a lot of variables. Following Amelia, let's standardise the numeric variables of the dataframe. 
+
+```{r caravan_stardard}
+caravan_standard <- 
+  caravan %>%
+  select(-Purchase) %>%
+  dmap(~as.vector(scale(.x))) %>%
+  print() 
+```
+
+Now, let's follow David by using k-fold cross-validation. So, I sat here staring at the monitor for twenty minutes, because I could not see how to go forward with modelr's framework for cross-validation using `knn()`. I could not see how to get there from here. So I went to run some errands, and a solution appeared (as happens from time to time).
+
+The problem (I think) is that the API to the `knn()` function is different than for the `lm()` function. My solution is to back-up, and to write a function to wrap to the `knn()` function so that the API will be "close enough". As I am starting to learn, "write a function" seems to be the way out of a *lot* of R pickles.
+
+To act like `lm()`, we need to keep the target variable in a data-frame alongside the predictor variables. So let's do that.
+
+```{r caravan_standard_new}
+caravan_standard_new <- 
+  caravan %>%
+  dmap_if(is.numeric, ~as.vector(scale(.x))) %>%
+  print() 
+```
+
+Now, let's work on the wrapper for the `knn()` function.
+
+```{r}
+#' gets \code{class::knn()} to play nice with modelr
+#'
+#' @param train       dataframe, with (scaled) numeric columns for predictors
+#'                    and a factor column for the target
+#' @param test        dataframe, with (scaled) numeric columns for predictors
+#'                    and a factor column for the target
+#' @param str_target  string, indicated target column of test and train
+#'                    dataframe
+#' @param ...         arguments passed on to \code{class::knn()}
+#'
+#' @return like \code{class::knn()}, factor of classifications of test set. 
+#'         \code{doubt} will be returned as \code{NA}.
+#'
+knn_new <- function(train, test, str_target, ...){
+  
+  # lets us use "resample"
+  train <- as.data.frame(train)
+  test <- as.data.frame(test)
+  
+  # yes, I should be able to do this using NSE, but I forgot...
+  assertthat::assert_that(str_target %in% names(train))
+  assertthat::assert_that(str_target %in% names(test)) # may not need this
+  
+  # get target vector for train dataframe
+  target_train <- train[[str_target]]
+  
+  # remove target column from both dataframes
+  train[[str_target]] <- NULL
+  test[[str_target]] <- NULL
+  
+  class::knn(train = train, test = test, cl = target_train, ...)
+}
+```
+
+Let's see if this thing works...
+
+Using the standard method:
+
+```{r}
+test_caravan = caravan_standard %>%
+  slice(1:1000)
+train_caravan = caravan_standard %>%
+  slice(1001:5822)
+
+Purchase = caravan %>%
+  select(Purchase)
+
+test_purchase = Purchase %>%
+  slice(1:1000) %>%
+  .$Purchase
+
+train_purchase = Purchase %>%
+  slice(1001:5822) %>%
+  .$Purchase
+```
+
+```{r}
+set.seed(1)
+knn_pred = knn(train_caravan, test_caravan, train_purchase, k=1)
+mean(test_purchase != knn_pred) # KNN error rate
+mean(test_purchase != "No")  
+```
+
+Now, let's try with the "new" function:
+
+```{r}
+test_caravan_new = caravan_standard_new %>%
+  slice(1:1000)
+train_caravan_new = caravan_standard_new %>%
+  slice(1001:5822)
+
+set.seed(1)
+knn_pred_new = knn_new(train_caravan_new, test_caravan_new, "Purchase", k=1)
+mean(test_purchase != knn_pred_new) # KNN error rate
+mean(test_purchase != "No") 
+```
+
+Promising.... just to make (more) sure:
+
+```{r}
+all(knn_pred == knn_pred_new)
+```
+
+Whew! Next let's use modelr to do some cross-validations:
+
+I suspect I am doing something bad here by not requiring that the proportions of the levels of the response variable are consistent among the train and test sets. I'll leave that as an exercise for later.
+
+```{r}
+# more hackery
+get_resample_column <- function(df, str_var){
+  df <- as.data.frame(df)
+  df[[str_var]]
+}
+
+caravan_summary <- 
+  caravan_standard_new %>%
+  crossv_kfold(k = 20) %>%
+  mutate(
+    pred = map2(train, test, knn_new, "Purchase", k = 1),
+    resp = map(test, get_resample_column, "Purchase")
+  ) %>%
+  unnest(pred, resp) %>%
+  group_by(.id, pred, resp) %>%
+  summarise(count = n()) %>%
+  print()
+```
+
+At this point, we could visualize the confusion matrix over all of the cross-validations.
+
+```{r}
+caravan_summary %>%
+  mutate(k = "1") %>%
+  ggplot(aes(x = k, y = count)) +
+  geom_beeswarm(alpha = 0.5) + 
+  facet_grid(pred ~ resp, scales = "free")
+```
+
+I don't know if such a visualization is a useful thing or not - there are doubtless things that can be done to make it more useful, but this may revealed (to me at least) only with coffee. At the very least, I ought to label the facet axes to show which is prediction and which is response.
+
+This method can be extended to looking at different values of $k$, as well. I will have to get to that later.
+
+```{r}
+devtools::session_info()
+```
+

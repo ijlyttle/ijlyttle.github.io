@@ -276,7 +276,7 @@ div.tocify {
         <span class="icon-bar"></span>
         <span class="icon-bar"></span>
       </button>
-      <a class="navbar-brand" href="index.html">Wanderings through the Tidyverse</a>
+      <a class="navbar-brand" href="index.html">Wanderings through the tidyverse</a>
     </div>
     <div id="navbar" class="navbar-collapse collapse">
       <ul class="nav navbar-nav">
@@ -304,6 +304,9 @@ div.tocify {
     </li>
     <li>
       <a href="model_bootstrap_parameter.html">Parameter-assessment using bootstrapping</a>
+    </li>
+    <li>
+      <a href="model_caravans_cv.html">Of caravans and cross-validation</a>
     </li>
     <li class="dropdown-header">Communicate</li>
     <li>
@@ -399,16 +402,16 @@ library(&quot;pryr&quot;)</code></pre>
 <pre><code># A tibble: 100 × 2
             x        y
         &lt;dbl&gt;    &lt;dbl&gt;
-1  0.30383423 1.360811
-2  0.01779071 1.121039
-3  0.36270201 1.626840
-4  0.31733496 1.552876
-5  0.74816002 1.747367
-6  0.29218987 1.695253
-7  0.29159987 1.769281
-8  0.43455578 1.550059
-9  0.61249780 1.912246
-10 0.67256296 1.889247
+1  0.52740168 1.754075
+2  0.29492110 1.517280
+3  0.03121758 1.086421
+4  0.05972695 1.093226
+5  0.99094942 1.947587
+6  0.25087987 1.451872
+7  0.55387266 1.827428
+8  0.81953000 2.002192
+9  0.48774342 1.767779
+10 0.22147041 1.511195
 # ... with 90 more rows</code></pre>
 <p>Of course, our first step is to visualize the dataset.</p>
 <pre class="r"><code>ggplot(df, aes(x = x, y = y)) +
@@ -443,16 +446,16 @@ library(&quot;pryr&quot;)</code></pre>
  $ train:List of 1
   ..$ :List of 2
   .. ..$ data:Classes &#39;tbl_df&#39;, &#39;tbl&#39; and &#39;data.frame&#39;: 100 obs. of  2 variables:
-  .. .. ..$ x: num  0.3038 0.0178 0.3627 0.3173 0.7482 ...
-  .. .. ..$ y: num  1.36 1.12 1.63 1.55 1.75 ...
-  .. ..$ idx : int  1 2 3 4 8 9 10 11 12 14 ...
+  .. .. ..$ x: num  0.5274 0.2949 0.0312 0.0597 0.9909 ...
+  .. .. ..$ y: num  1.75 1.52 1.09 1.09 1.95 ...
+  .. ..$ idx : int  1 2 3 4 7 10 11 12 15 16 ...
   .. ..- attr(*, &quot;class&quot;)= chr &quot;resample&quot;
  $ test :List of 1
   ..$ :List of 2
   .. ..$ data:Classes &#39;tbl_df&#39;, &#39;tbl&#39; and &#39;data.frame&#39;: 100 obs. of  2 variables:
-  .. .. ..$ x: num  0.3038 0.0178 0.3627 0.3173 0.7482 ...
-  .. .. ..$ y: num  1.36 1.12 1.63 1.55 1.75 ...
-  .. ..$ idx : int  5 6 7 13 16 21 31 35 48 51 ...
+  .. .. ..$ x: num  0.5274 0.2949 0.0312 0.0597 0.9909 ...
+  .. .. ..$ y: num  1.75 1.52 1.09 1.09 1.95 ...
+  .. ..$ idx : int  5 6 8 9 13 14 24 28 37 40 ...
   .. ..- attr(*, &quot;class&quot;)= chr &quot;resample&quot;
  $ .id  : chr &quot;01&quot;</code></pre>
 <p>One thing you may notice is that both the train and test elements both <em>appear</em> to contain the entire original dataset. In fact, R keeps a single copy of the original dataframe, then uses pointers wherever it is used elsewhere in the session. For more, you can read <a href="http://adv-r.had.co.nz/memory.html#object-size">this section</a> and how I got some help in <a href="https://github.com/hadley/modelr/issues/14">this thread</a>.</p>
@@ -526,16 +529,16 @@ df_split_resid &lt;-
 <pre><code># A tibble: 5,000 × 5
      .id split     pred     resp        resid
    &lt;chr&gt; &lt;chr&gt;    &lt;dbl&gt;    &lt;dbl&gt;        &lt;dbl&gt;
-1     01 train 1.472019 1.360811  0.111207800
-2     01 train 1.186096 1.121039  0.065056997
-3     01 train 1.530861 1.626840 -0.095978731
-4     01 train 1.485514 1.552876 -0.067362282
-5     01 train 1.602685 1.550059  0.052625333
-6     01 train 1.780551 1.912246 -0.131695181
-7     01 train 1.840591 1.889247 -0.048656555
-8     01 train 1.374159 1.330911  0.043247896
-9     01 train 1.605232 1.603319  0.001913257
-10    01 train 1.658812 1.667322 -0.008510059
+1     01 train 1.682961 1.754075 -0.071113385
+2     01 train 1.447062 1.517280 -0.070218215
+3     01 train 1.179480 1.086421  0.093059007
+4     01 train 1.208409 1.093226  0.115182956
+5     01 train 1.709822 1.827428 -0.117606362
+6     01 train 1.372531 1.511195 -0.138664051
+7     01 train 1.253592 1.087545  0.166046879
+8     01 train 1.981166 1.971791  0.009375166
+9     01 train 1.496840 1.634477 -0.137637030
+10    01 train 1.811973 1.826014 -0.014041387
 # ... with 4,990 more rows</code></pre>
 <p>The thing we are interested to do is to compare the performance of models on their trianing sets with their proformance on their test sets. One way we can do this is to make qualitative assesments of the kernel density of the residuals.</p>
 <pre class="r"><code>ggplot(df_split_resid, aes(x = resid, color = split, group = paste(split, .id))) +
@@ -560,16 +563,16 @@ df_split_resid &lt;-
 <pre><code># A tibble: 100 × 3
      .id split      rmse
    &lt;chr&gt; &lt;chr&gt;     &lt;dbl&gt;
-1     01  test 0.1612719
-2     01 train 0.1292196
-3     02  test 0.1473852
-4     02 train 0.1327287
-5     03  test 0.1260492
-6     03 train 0.1385199
-7     04  test 0.1443175
-8     04 train 0.1343784
-9     05  test 0.1226475
-10    05 train 0.1404366
+1     01  test 0.1401589
+2     01 train 0.1319705
+3     02  test 0.1520061
+4     02 train 0.1279987
+5     03  test 0.1345136
+6     03 train 0.1331484
+7     04  test 0.1356361
+8     04 train 0.1332424
+9     05  test 0.1515469
+10    05 train 0.1281505
 # ... with 90 more rows</code></pre>
 <p>We can visualize this summary.</p>
 <pre class="r"><code>ggplot(df_split_rmse, aes(x = &quot;linear&quot;, y = rmse)) +
@@ -682,16 +685,16 @@ df_sample_model_created &lt;-
 <pre><code># A tibble: 25,000 × 6
      .id model_name split     pred     resp        resid
    &lt;chr&gt;      &lt;chr&gt; &lt;chr&gt;    &lt;dbl&gt;    &lt;dbl&gt;        &lt;dbl&gt;
-1     01        one train 1.472019 1.360811  0.111207800
-2     01        one train 1.186096 1.121039  0.065056997
-3     01        one train 1.530861 1.626840 -0.095978731
-4     01        one train 1.485514 1.552876 -0.067362282
-5     01        one train 1.602685 1.550059  0.052625333
-6     01        one train 1.780551 1.912246 -0.131695181
-7     01        one train 1.840591 1.889247 -0.048656555
-8     01        one train 1.374159 1.330911  0.043247896
-9     01        one train 1.605232 1.603319  0.001913257
-10    01        one train 1.658812 1.667322 -0.008510059
+1     01        one train 1.682961 1.754075 -0.071113385
+2     01        one train 1.447062 1.517280 -0.070218215
+3     01        one train 1.179480 1.086421  0.093059007
+4     01        one train 1.208409 1.093226  0.115182956
+5     01        one train 1.709822 1.827428 -0.117606362
+6     01        one train 1.372531 1.511195 -0.138664051
+7     01        one train 1.253592 1.087545  0.166046879
+8     01        one train 1.981166 1.971791  0.009375166
+9     01        one train 1.496840 1.634477 -0.137637030
+10    01        one train 1.811973 1.826014 -0.014041387
 # ... with 24,990 more rows</code></pre>
 <p>And look at some kernel-density distributions:</p>
 <pre class="r"><code>df_sample_resid %&gt;%
@@ -715,18 +718,18 @@ df_sample_model_created &lt;-
   ungroup() %&gt;%
   print()</code></pre>
 <pre><code># A tibble: 500 × 4
-     .id model_name split      rmse
-   &lt;chr&gt;      &lt;chr&gt; &lt;chr&gt;     &lt;dbl&gt;
-1     01       five  test 0.1553199
-2     01       five train 0.1036048
-3     01       four  test 0.1539688
-4     01       four train 0.1042591
-5     01        one  test 0.1612719
-6     01        one train 0.1292196
-7     01      three  test 0.1533891
-8     01      three train 0.1044753
-9     01        two  test 0.1508832
-10    01        two train 0.1053782
+     .id model_name split       rmse
+   &lt;chr&gt;      &lt;chr&gt; &lt;chr&gt;      &lt;dbl&gt;
+1     01       five  test 0.08768335
+2     01       five train 0.08399027
+3     01       four  test 0.07862659
+4     01       four train 0.08486753
+5     01        one  test 0.14015894
+6     01        one train 0.13197049
+7     01      three  test 0.07807628
+8     01      three train 0.08492737
+9     01        two  test 0.07813625
+10    01        two train 0.08493245
 # ... with 490 more rows</code></pre>
 <pre class="r"><code>df_sample_rmse %&gt;%
   mutate(model_name = factor(model_name, levels = c(&quot;one&quot;, &quot;two&quot;, &quot;three&quot;, &quot;four&quot;, &quot;five&quot;))) %&gt;%
@@ -851,18 +854,18 @@ df_logistic_resid_one &lt;-
   unnest() %&gt;%
   print()</code></pre>
 <pre><code># A tibble: 50,000 × 5
-     .id split        pred  resp is_misclass
-   &lt;chr&gt; &lt;chr&gt;       &lt;dbl&gt; &lt;lgl&gt;       &lt;lgl&gt;
-1     01 train   7.1097212  TRUE       FALSE
-2     01 train  -2.5298295 FALSE       FALSE
-3     01 train -10.4162731 FALSE       FALSE
-4     01 train  -2.2007271 FALSE       FALSE
-5     01 train  -3.5121699 FALSE       FALSE
-6     01 train  -9.1938580 FALSE       FALSE
-7     01 train  -6.9438447 FALSE       FALSE
-8     01 train   1.6520764  TRUE       FALSE
-9     01 train   0.5886493 FALSE        TRUE
-10    01 train   3.3531683  TRUE       FALSE
+     .id split      pred  resp is_misclass
+   &lt;chr&gt; &lt;chr&gt;     &lt;dbl&gt; &lt;lgl&gt;       &lt;lgl&gt;
+1     01 train  1.570240 FALSE        TRUE
+2     01 train -2.830389 FALSE       FALSE
+3     01 train -4.787275 FALSE       FALSE
+4     01 train -5.103877 FALSE       FALSE
+5     01 train  3.751358  TRUE       FALSE
+6     01 train  5.827945  TRUE       FALSE
+7     01 train  2.057869  TRUE       FALSE
+8     01 train -5.940517 FALSE       FALSE
+9     01 train -3.541278 FALSE       FALSE
+10    01 train  6.082074  TRUE       FALSE
 # ... with 49,990 more rows</code></pre>
 <p>This is going to be a real experiment. What if we looked at the density of miscalssifications as a function of prediction?</p>
 <p>We expect to have most of our misclassifications near where the log odds are zero.</p>
@@ -888,16 +891,16 @@ df_logistic_resid_one &lt;-
 <pre><code># A tibble: 100 × 3
      .id split misclassification_rate
    &lt;chr&gt; &lt;chr&gt;                  &lt;dbl&gt;
-1     01  test             0.07960199
-2     01 train             0.08886108
-3     02  test             0.10447761
-4     02 train             0.08260325
-5     03  test             0.08457711
-6     03 train             0.09261577
+1     01  test             0.10945274
+2     01 train             0.08635795
+3     02  test             0.07960199
+4     02 train             0.09011264
+5     03  test             0.11940299
+6     03 train             0.08135169
 7     04  test             0.08457711
-8     04 train             0.08760951
-9     05  test             0.12437811
-10    05 train             0.07384230
+8     04 train             0.09011264
+9     05  test             0.07462687
+10    05 train             0.09136421
 # ... with 90 more rows</code></pre>
 <pre class="r"><code>ggplot(df_logistic_misclass_one, aes(x = &quot;one_one&quot;, y = misclassification_rate)) +
   geom_point(
@@ -962,18 +965,18 @@ df_logistic_resid_one &lt;-
   unnest() %&gt;%
   print()</code></pre>
 <pre><code># A tibble: 300,000 × 5
-     .id model_name split        pred is_misclass
-   &lt;chr&gt;      &lt;chr&gt; &lt;chr&gt;       &lt;dbl&gt;       &lt;lgl&gt;
-1     01    one_one train   7.1097212       FALSE
-2     01    one_one train  -2.5298295       FALSE
-3     01    one_one train -10.4162731       FALSE
-4     01    one_one train  -2.2007271       FALSE
-5     01    one_one train  -3.5121699       FALSE
-6     01    one_one train  -9.1938580       FALSE
-7     01    one_one train  -6.9438447       FALSE
-8     01    one_one train   1.6520764       FALSE
-9     01    one_one train   0.5886493        TRUE
-10    01    one_one train   3.3531683       FALSE
+     .id model_name split      pred is_misclass
+   &lt;chr&gt;      &lt;chr&gt; &lt;chr&gt;     &lt;dbl&gt;       &lt;lgl&gt;
+1     01    one_one train  1.570240        TRUE
+2     01    one_one train -2.830389       FALSE
+3     01    one_one train -4.787275       FALSE
+4     01    one_one train -5.103877       FALSE
+5     01    one_one train  3.751358       FALSE
+6     01    one_one train  5.827945       FALSE
+7     01    one_one train  2.057869       FALSE
+8     01    one_one train -5.940517       FALSE
+9     01    one_one train -3.541278       FALSE
+10    01    one_one train  6.082074       FALSE
 # ... with 299,990 more rows</code></pre>
 <pre class="r"><code>levels_model_logistic &lt;- 
   c(&quot;one_one&quot;, &quot;one_two&quot;, &quot;two_one&quot;, &quot;one_three&quot;, &quot;two_two&quot;, &quot;three_one&quot;)
@@ -1002,16 +1005,16 @@ df_sample_logistic_resid %&gt;%
 <pre><code># A tibble: 600 × 4
      .id model_name split misclassification_rate
    &lt;chr&gt;      &lt;chr&gt; &lt;chr&gt;                  &lt;dbl&gt;
-1     01    one_one  test             0.07960199
-2     01    one_one train             0.08886108
-3     01  one_three  test             0.07462687
-4     01  one_three train             0.07259074
-5     01    one_two  test             0.07960199
-6     01    one_two train             0.08385482
-7     01  three_one  test             0.07462687
-8     01  three_one train             0.07259074
-9     01    two_one  test             0.07462687
-10    01    two_one train             0.07259074
+1     01    one_one  test             0.10945274
+2     01    one_one train             0.08635795
+3     01  one_three  test             0.08955224
+4     01  one_three train             0.08385482
+5     01    one_two  test             0.08457711
+6     01    one_two train             0.08510638
+7     01  three_one  test             0.09950249
+8     01  three_one train             0.08635795
+9     01    two_one  test             0.08955224
+10    01    two_one train             0.08635795
 # ... with 590 more rows</code></pre>
 <pre class="r"><code>df_logistic_misclass %&gt;%
   mutate(model_name = factor(model_name, levels = levels_model_logistic)) %&gt;%
@@ -1042,25 +1045,31 @@ df_sample_logistic_resid %&gt;%
  language (EN)                        
  collate  en_US.UTF-8                 
  tz       America/Chicago             
- date     2016-09-09                  </code></pre>
+ date     2016-09-19                  </code></pre>
 <pre><code>Packages ---------------------------------------------------------------------------------</code></pre>
 <pre><code> package         * version    date       source                            
- assertthat        0.1        2013-12-06 CRAN (R 3.3.0)                    
+ assertthat      * 0.1        2013-12-06 CRAN (R 3.3.0)                    
+ beeswarm          0.2.3      2016-04-25 CRAN (R 3.3.0)                    
  broom           * 0.4.1      2016-06-24 cran (@0.4.1)                     
+ class           * 7.3-14     2015-08-30 CRAN (R 3.3.1)                    
  codetools         0.2-14     2015-07-15 CRAN (R 3.3.1)                    
  colorspace        1.2-6      2015-03-11 CRAN (R 3.3.0)                    
- DBI               0.5        2016-08-11 cran (@0.5)                       
+ DBI               0.5-1      2016-09-10 CRAN (R 3.3.0)                    
  devtools        * 1.12.0     2016-06-24 CRAN (R 3.3.0)                    
  digest            0.6.10     2016-08-02 cran (@0.6.10)                    
  dplyr           * 0.5.0      2016-06-24 cran (@0.5.0)                     
  evaluate          0.9        2016-04-29 CRAN (R 3.3.0)                    
  formatR           1.4        2016-05-09 CRAN (R 3.3.0)                    
+ ggbeeswarm      * 0.5.0      2016-02-21 CRAN (R 3.3.0)                    
  ggplot2         * 2.1.0      2016-03-01 CRAN (R 3.3.0)                    
+ gridExtra         2.2.1      2016-02-29 CRAN (R 3.3.0)                    
  gtable            0.2.0      2016-02-26 CRAN (R 3.3.0)                    
  htmlDocumentIJL   0.0.0.9000 2016-09-04 local                             
- htmltools         0.3.5      2016-03-21 CRAN (R 3.3.0)                    
+ htmltools       * 0.3.5      2016-03-21 CRAN (R 3.3.0)                    
  htmlwidgets       0.6        2016-02-25 CRAN (R 3.3.0)                    
- jsonlite          1.0        2016-07-01 CRAN (R 3.3.0)                    
+ httr              1.2.1      2016-07-03 CRAN (R 3.3.0)                    
+ ISLR            * 1.0        2013-06-11 CRAN (R 3.3.0)                    
+ jsonlite          1.1        2016-09-14 CRAN (R 3.3.0)                    
  knitr           * 1.14       2016-08-13 cran (@1.14)                      
  labeling          0.3        2014-08-23 CRAN (R 3.3.0)                    
  lattice           0.20-33    2015-07-14 CRAN (R 3.3.1)                    
@@ -1069,7 +1078,7 @@ df_sample_logistic_resid %&gt;%
  magrittr        * 1.5        2014-11-22 CRAN (R 3.3.0)                    
  memoise           1.0.0      2016-01-29 CRAN (R 3.3.0)                    
  mnormt            1.5-4      2016-03-09 cran (@1.5-4)                     
- modelr          * 0.0.0.9000 2016-09-07 Github (hadley/modelr@bf0eb2f)    
+ modelr          * 0.1.0      2016-08-31 CRAN (R 3.3.0)                    
  munsell           0.4.3      2016-02-13 CRAN (R 3.3.0)                    
  nlme              3.1-128    2016-05-10 CRAN (R 3.3.1)                    
  plyr              1.8.4      2016-06-08 cran (@1.8.4)                     
@@ -1078,17 +1087,21 @@ df_sample_logistic_resid %&gt;%
  purrr           * 0.2.2.9000 2016-08-29 Github (hadley/purrr@a7afcca)     
  R6                2.1.3      2016-08-19 CRAN (R 3.3.0)                    
  Rcpp              0.12.7     2016-09-05 cran (@0.12.7)                    
+ readr           * 1.0.0      2016-08-03 CRAN (R 3.3.0)                    
  reshape2          1.4.1      2014-12-06 CRAN (R 3.3.0)                    
  rmarkdown         1.0.9013   2016-09-03 Github (rstudio/rmarkdown@5d05a39)
- rsconnect         0.4.3      2016-05-02 CRAN (R 3.3.0)                    
  rstudioapi        0.6        2016-06-27 CRAN (R 3.3.0)                    
  scales            0.4.0      2016-02-26 CRAN (R 3.3.0)                    
  stringi           1.1.1      2016-05-27 CRAN (R 3.3.0)                    
  stringr           1.1.0      2016-08-19 CRAN (R 3.3.0)                    
  tibble          * 1.2        2016-08-26 CRAN (R 3.3.0)                    
  tidyr           * 0.6.0.9000 2016-09-07 Github (hadley/tidyr@3c9335b)     
+ tidyverse       * 0.0.0.9000 2016-09-07 Github (hadley/tidyverse@6ca05a7) 
  user2016docdemo * 0.0.0.9000 2016-09-06 local                             
- utilrSE         * 0.1.99     2016-09-08 local                             
+ utilrSE         * 0.1.99     2016-09-16 Github (SE-AAP/utilrSE@4a365a1)   
+ vembedr         * 0.1.1      2016-07-15 CRAN (R 3.3.1)                    
+ vipor             0.4.3      2016-07-27 CRAN (R 3.3.0)                    
+ viridis         * 0.3.4      2016-03-12 CRAN (R 3.3.0)                    
  withr             1.0.2      2016-06-20 CRAN (R 3.3.0)                    
  yaml              2.1.13     2014-06-12 CRAN (R 3.3.0)                    </code></pre>
 </div>

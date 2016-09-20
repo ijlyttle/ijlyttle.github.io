@@ -1,4 +1,4 @@
-title: 'Wanderings through the Tidyverse'
+title: 'Wanderings through the tidyverse'
 right:
   - text: "Dimensions"
     menu:
@@ -15,6 +15,8 @@ right:
         href: model_cv_selection.html
       - text: "Parameter-assessment using bootstrapping"
         href: model_bootstrap_parameter.html
+      - text: "Of caravans and cross-validation"
+        href: model_caravans_cv.html
       - text: "Communicate"
       - text: "Custom html-document formats for R Markdown"
         href: communicate_custom_html_document_format_r_markdown.html

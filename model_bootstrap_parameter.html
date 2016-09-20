@@ -276,7 +276,7 @@ div.tocify {
         <span class="icon-bar"></span>
         <span class="icon-bar"></span>
       </button>
-      <a class="navbar-brand" href="index.html">Wanderings through the Tidyverse</a>
+      <a class="navbar-brand" href="index.html">Wanderings through the tidyverse</a>
     </div>
     <div id="navbar" class="navbar-collapse collapse">
       <ul class="nav navbar-nav">
@@ -304,6 +304,9 @@ div.tocify {
     </li>
     <li>
       <a href="model_bootstrap_parameter.html">Parameter-assessment using bootstrapping</a>
+    </li>
+    <li>
+      <a href="model_caravans_cv.html">Of caravans and cross-validation</a>
     </li>
     <li class="dropdown-header">Communicate</li>
     <li>
@@ -366,42 +369,11 @@ div.tocify {
 library(&quot;tibble&quot;)
 library(&quot;ggplot2&quot;)
 library(&quot;modelr&quot;)
-library(&quot;dplyr&quot;)</code></pre>
-<pre><code>
-Attaching package: &#39;dplyr&#39;</code></pre>
-<pre><code>The following objects are masked from &#39;package:stats&#39;:
-
-    filter, lag</code></pre>
-<pre><code>The following objects are masked from &#39;package:base&#39;:
-
-    intersect, setdiff, setequal, union</code></pre>
-<pre class="r"><code>library(&quot;purrr&quot;)</code></pre>
-<pre><code>
-Attaching package: &#39;purrr&#39;</code></pre>
-<pre><code>The following objects are masked from &#39;package:dplyr&#39;:
-
-    contains, order_by</code></pre>
-<pre><code>The following object is masked from &#39;package:magrittr&#39;:
-
-    set_names</code></pre>
-<pre class="r"><code>library(&quot;tidyr&quot;)</code></pre>
-<pre><code>
-Attaching package: &#39;tidyr&#39;</code></pre>
-<pre><code>The following object is masked from &#39;package:magrittr&#39;:
-
-    extract</code></pre>
-<pre class="r"><code>library(&quot;pryr&quot;)</code></pre>
-<pre><code>
-Attaching package: &#39;pryr&#39;</code></pre>
-<pre><code>The following objects are masked from &#39;package:purrr&#39;:
-
-    compose, partial</code></pre>
-<pre class="r"><code>library(&quot;broom&quot;)</code></pre>
-<pre><code>
-Attaching package: &#39;broom&#39;</code></pre>
-<pre><code>The following object is masked from &#39;package:modelr&#39;:
-
-    bootstrap</code></pre>
+library(&quot;dplyr&quot;)
+library(&quot;purrr&quot;)
+library(&quot;tidyr&quot;)
+library(&quot;pryr&quot;)
+library(&quot;broom&quot;)</code></pre>
 <p>In this page, we want to take models we have selected using cross-validation, then assess their parameters using bootstrapping.</p>
 <p>The goal of parameter assessment is to demonstrate (hopefully) that each of your parameters is significantly different from zero, to justify each parameter’s inclusion in a model.</p>
 <div id="linear-regresssion" class="section level2">
@@ -421,18 +393,18 @@ noise &lt;- function(x){
   ) %&gt;%
   print()</code></pre>
 <pre><code># A tibble: 100 × 2
-            x         y
-        &lt;dbl&gt;     &lt;dbl&gt;
-1  0.31174483 1.4713936
-2  0.16734769 1.3621330
-3  0.52095456 1.7954733
-4  0.03435036 0.8956455
-5  0.39619936 1.5456839
-6  0.02310503 0.9818037
-7  0.13054845 1.1507751
-8  0.78049674 1.9828236
-9  0.34654196 1.6682414
-10 0.46235263 1.8189000
+           x        y
+       &lt;dbl&gt;    &lt;dbl&gt;
+1  0.3983524 1.466856
+2  0.1314643 1.230083
+3  0.4241691 1.691412
+4  0.6169780 1.882185
+5  0.1010143 1.301517
+6  0.6248860 1.955027
+7  0.7520183 1.911545
+8  0.9528740 1.884810
+9  0.1925271 1.258083
+10 0.2846609 1.416590
 # ... with 90 more rows</code></pre>
 <pre class="r"><code>ggplot(df_regression, aes(x = x, y = y)) +
   stat_function(fun = truth, color = &quot;black&quot;, alpha = 0.7, linetype = &quot;dashed&quot;) +
@@ -488,18 +460,18 @@ df_regression_bootstrap_model &lt;-
   unnest() %&gt;%
   print()</code></pre>
 <pre><code># A tibble: 30,000 × 6
-     .id        term  estimate   std.error statistic       p.value
-   &lt;chr&gt;       &lt;chr&gt;     &lt;dbl&gt;       &lt;dbl&gt;     &lt;dbl&gt;         &lt;dbl&gt;
-1  00001 (Intercept)  1.648597 0.008347625 197.49288 3.512233e-128
-2  00001 poly(x, 2)1  2.805389 0.083476254  33.60703  3.049010e-55
-3  00001 poly(x, 2)2 -0.703032 0.083476254  -8.42194  3.377544e-13
-4  00002 (Intercept)  1.653956 0.009612389 172.06504 2.165096e-122
-5  00002 poly(x, 2)1  3.033593 0.096123887  31.55920  8.182020e-53
-6  00002 poly(x, 2)2 -1.126886 0.096123887 -11.72327  2.708289e-20
-7  00003 (Intercept)  1.629373 0.009379660 173.71339 8.612291e-123
-8  00003 poly(x, 2)1  3.262680 0.093796601  34.78463  1.391146e-56
-9  00003 poly(x, 2)2 -1.134015 0.093796601 -12.09015  4.536596e-21
-10 00004 (Intercept)  1.566836 0.007911616 198.04243 2.684169e-128
+     .id        term   estimate   std.error  statistic       p.value
+   &lt;chr&gt;       &lt;chr&gt;      &lt;dbl&gt;       &lt;dbl&gt;      &lt;dbl&gt;         &lt;dbl&gt;
+1  00001 (Intercept)  1.6631311 0.008962036 185.575141 1.448097e-125
+2  00001 poly(x, 2)1  3.2432067 0.089620359  36.188281  3.934643e-58
+3  00001 poly(x, 2)2 -0.6142712 0.089620359  -6.854148  6.650652e-10
+4  00002 (Intercept)  1.5868824 0.009168418 173.081384 1.225110e-122
+5  00002 poly(x, 2)1  3.1215898 0.091684178  34.047203  9.514691e-56
+6  00002 poly(x, 2)2 -0.4434019 0.091684178  -4.836187  4.973027e-06
+7  00003 (Intercept)  1.6437947 0.009372512 175.384651 3.412183e-123
+8  00003 poly(x, 2)1  3.1156577 0.093725117  33.242506  8.077153e-55
+9  00003 poly(x, 2)2 -0.5824392 0.093725117  -6.214334  1.290738e-08
+10 00004 (Intercept)  1.6373716 0.008221258 199.163155 1.554767e-128
 # ... with 29,990 more rows</code></pre>
 <pre class="r"><code>df_regression_bootstrap_param %&gt;%
   ggplot(aes(x = estimate)) + 
@@ -515,9 +487,9 @@ df_regression_bootstrap_model &lt;-
 <pre><code># A tibble: 3 × 2
          term estimate_mean
         &lt;chr&gt;         &lt;dbl&gt;
-1 (Intercept)     1.6307966
-2 poly(x, 2)1     3.0358692
-3 poly(x, 2)2    -0.9707607</code></pre>
+1 (Intercept)     1.6264998
+2 poly(x, 2)1     3.0795330
+3 poly(x, 2)2    -0.5583743</code></pre>
 <p>Note to self - I think the <code>poly()</code> function uses orthogonal polynomials, so I’d like to find out how to transform these coefficient estimates into coefficients that multiply <span class="math inline">\((1, x, x^2)\)</span>. I know it’s something simple - just to sit down and do it.</p>
 <p>There are two ways we can further investigate the significance of each term - visually, and to make a table of the proportion of bootstrap models where the sign of the parameter is different from the sign of the mean.</p>
 <pre class="r"><code>df_regression_bootstrap_param_scaled &lt;- 
@@ -532,16 +504,16 @@ df_regression_bootstrap_model &lt;-
 <pre><code># A tibble: 30,000 × 3
      .id        term estimate_scaled
    &lt;chr&gt;       &lt;chr&gt;           &lt;dbl&gt;
-1  00001 (Intercept)       1.0109149
-2  00001 poly(x, 2)1       0.9240811
-3  00001 poly(x, 2)2       0.7242073
-4  00002 (Intercept)       1.0142013
-5  00002 poly(x, 2)1       0.9992504
-6  00002 poly(x, 2)2       1.1608277
-7  00003 (Intercept)       0.9991268
-8  00003 poly(x, 2)1       1.0747102
-9  00003 poly(x, 2)2       1.1681719
-10 00004 (Intercept)       0.9607793
+1  00001 (Intercept)       1.0225215
+2  00001 poly(x, 2)1       1.0531489
+3  00001 poly(x, 2)2       1.1001065
+4  00002 (Intercept)       0.9756426
+5  00002 poly(x, 2)1       1.0136569
+6  00002 poly(x, 2)2       0.7940943
+7  00003 (Intercept)       1.0106332
+8  00003 poly(x, 2)1       1.0117306
+9  00003 poly(x, 2)2       1.0430981
+10 00004 (Intercept)       1.0066841
 # ... with 29,990 more rows</code></pre>
 <pre class="r"><code>df_regression_bootstrap_param_scaled %&gt;%
   ggplot(aes(x = estimate_scaled)) + 
@@ -562,9 +534,9 @@ df_regression_bootstrap_model &lt;-
 <pre><code># A tibble: 3 × 4
          term n_bootstrap n_sign_opposite min_estimate_scaled
         &lt;chr&gt;       &lt;int&gt;           &lt;dbl&gt;               &lt;dbl&gt;
-1 (Intercept)       10000               0           0.9204710
-2 poly(x, 2)1       10000               0           0.7403919
-3 poly(x, 2)2       10000               0           0.5289114</code></pre>
+1 (Intercept)       10000               0           0.9147621
+2 poly(x, 2)1       10000               0           0.7999318
+3 poly(x, 2)2       10000               0           0.3985823</code></pre>
 <p>It may also be interesting to look at the interquartile range as way to quantify our confidence.</p>
 <pre class="r"><code>df_regression_bootstrap_param %&gt;%
   group_by(term) %&gt;%
@@ -575,11 +547,11 @@ df_regression_bootstrap_model &lt;-
   ) %&gt;%
   print()</code></pre>
 <pre><code># A tibble: 3 × 4
-         term      q_25     median       q_75
-        &lt;chr&gt;     &lt;dbl&gt;      &lt;dbl&gt;      &lt;dbl&gt;
-1 (Intercept)  1.608485  1.6312361  1.6532258
-2 poly(x, 2)1  2.907205  3.0414690  3.1690627
-3 poly(x, 2)2 -1.040085 -0.9720023 -0.9048481</code></pre>
+         term       q_25     median       q_75
+        &lt;chr&gt;      &lt;dbl&gt;      &lt;dbl&gt;      &lt;dbl&gt;
+1 (Intercept)  1.6047443  1.6268274  1.6480145
+2 poly(x, 2)1  2.9699066  3.0834750  3.1877631
+3 poly(x, 2)2 -0.6199494 -0.5599468 -0.4953459</code></pre>
 <p>Finally, it may be interesting to look at our bootstrapped models, along with the original data, and the “truth”. Of course, we recognize that we can pull this off thanks to our single independent variable.</p>
 <pre class="r"><code>grid &lt;- 
   df_regression %&gt;% 
@@ -594,18 +566,18 @@ boot_pred &lt;-
   unnest() %&gt;%
   print()</code></pre>
 <pre><code># A tibble: 200,000 × 3
-     .id           x         y
-   &lt;chr&gt;       &lt;dbl&gt;     &lt;dbl&gt;
-1  00001 0.001481583 0.9978389
-2  00001 0.053822879 1.1015812
-3  00001 0.106164175 1.1997066
-4  00001 0.158505472 1.2922151
-5  00001 0.210846768 1.3791067
-6  00001 0.263188064 1.4603815
-7  00001 0.315529360 1.5360394
-8  00001 0.367870657 1.6060804
-9  00001 0.420211953 1.6705045
-10 00001 0.472553249 1.7293118
+     .id           x        y
+   &lt;chr&gt;       &lt;dbl&gt;    &lt;dbl&gt;
+1  00001 0.007057359 1.021346
+2  00001 0.059044188 1.117783
+3  00001 0.111031017 1.209733
+4  00001 0.163017846 1.297193
+5  00001 0.215004675 1.380165
+6  00001 0.266991504 1.458648
+7  00001 0.318978334 1.532643
+8  00001 0.370965163 1.602149
+9  00001 0.422951992 1.667166
+10 00001 0.474938821 1.727695
 # ... with 199,990 more rows</code></pre>
 <pre class="r"><code>ggplot(data = df_regression, mapping = aes(x = x, y = y)) +
   geom_line(
