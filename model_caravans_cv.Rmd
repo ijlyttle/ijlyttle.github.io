@@ -22,9 +22,9 @@ library("viridis")
 
 ## Introduction
 
-Following Amelia McNamara, we are looking at the [ISLR Caravan example](https://github.com/AmeliaMN/tidy-islr/blob/master/lab3/lab3.Rmd) (pp. 164--167).
+Following Amelia, let's look at the [ISLR Caravan example](https://github.com/AmeliaMN/tidy-islr/blob/master/lab3/lab3.Rmd) (pp. 164--167).
 
-The goal is to apply KNN (and if we are feeling particularly ambitious, logistic regression) to the `Caravan` dataset from the ISLR package. The first thing I'm going to do is make a copy of it as a tibble, then see what we've got.
+The goal is to apply KNN to the `Caravan` dataset from the ISLR package. The first thing I'm going to do is make a copy of it as a tibble, then see what we've got.
 
 ```{r caravan}
 caravan <- 
@@ -42,9 +42,11 @@ caravan_standard <-
   print() 
 ```
 
-Now, let's follow David by using k-fold cross-validation. So, I sat here staring at the monitor for twenty minutes, because I could not see how to go forward with modelr's framework for cross-validation using `knn()`. I could not see how to get there from here. So I went to run some errands, and a solution appeared (as happens from time to time).
+Now, let's follow David by using k-fold cross-validation. 
 
-The problem (I think) is that the API to the `knn()` function is different than for the `lm()` function. My solution is to back-up, and to write a function to wrap to the `knn()` function so that the API will be "close enough". As I am starting to learn, "write a function" seems to be the way out of a *lot* of R pickles.
+So, I sat here staring at the screen for twenty minutes, because I could not see how to go forward with modelr's framework for cross-validation using `knn()`; I could not see how to get there from here. So I went to run some errands, and a solution appeared (as happens from time to time).
+
+The problem (I think) is that the API to the `knn()` function is different than for the `lm()` function. My solution is to back-up, and to write a function to wrap to the `knn()` function so that the API will be "close enough". As I am starting to learn, "write a function" seems to be the way out of a *lot* of R pickles (and into others).
 
 To act like `lm()`, we need to keep the target variable in a data-frame alongside the predictor variables. So let's do that.
 

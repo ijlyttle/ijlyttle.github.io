@@ -393,8 +393,8 @@ Attaching package: &#39;broom&#39;</code></pre>
 library(&quot;viridis&quot;)</code></pre>
 <div id="introduction" class="section level2">
 <h2>Introduction</h2>
-<p>Following Amelia McNamara, we are looking at the <a href="https://github.com/AmeliaMN/tidy-islr/blob/master/lab3/lab3.Rmd">ISLR Caravan example</a> (pp. 164–167).</p>
-<p>The goal is to apply KNN (and if we are feeling particularly ambitious, logistic regression) to the <code>Caravan</code> dataset from the ISLR package. The first thing I’m going to do is make a copy of it as a tibble, then see what we’ve got.</p>
+<p>Following Amelia, let’s look at the <a href="https://github.com/AmeliaMN/tidy-islr/blob/master/lab3/lab3.Rmd">ISLR Caravan example</a> (pp. 164–167).</p>
+<p>The goal is to apply KNN to the <code>Caravan</code> dataset from the ISLR package. The first thing I’m going to do is make a copy of it as a tibble, then see what we’ve got.</p>
 <pre class="r"><code>caravan &lt;- 
   as_tibble(ISLR::Caravan) %&gt;%
   print()</code></pre>
@@ -462,8 +462,9 @@ library(&quot;viridis&quot;)</code></pre>
 #   AAANHANG &lt;dbl&gt;, ATRACTOR &lt;dbl&gt;, AWERKT &lt;dbl&gt;, ABROM &lt;dbl&gt;, ALEVEN &lt;dbl&gt;,
 #   APERSONG &lt;dbl&gt;, AGEZONG &lt;dbl&gt;, AWAOREG &lt;dbl&gt;, ABRAND &lt;dbl&gt;, AZEILPL &lt;dbl&gt;,
 #   APLEZIER &lt;dbl&gt;, AFIETS &lt;dbl&gt;, AINBOED &lt;dbl&gt;, ABYSTAND &lt;dbl&gt;</code></pre>
-<p>Now, let’s follow David by using k-fold cross-validation. So, I sat here staring at the monitor for twenty minutes, because I could not see how to go forward with modelr’s framework for cross-validation using <code>knn()</code>. I could not see how to get there from here. So I went to run some errands, and a solution appeared (as happens from time to time).</p>
-<p>The problem (I think) is that the API to the <code>knn()</code> function is different than for the <code>lm()</code> function. My solution is to back-up, and to write a function to wrap to the <code>knn()</code> function so that the API will be “close enough”. As I am starting to learn, “write a function” seems to be the way out of a <em>lot</em> of R pickles.</p>
+<p>Now, let’s follow David by using k-fold cross-validation.</p>
+<p>So, I sat here staring at the screen for twenty minutes, because I could not see how to go forward with modelr’s framework for cross-validation using <code>knn()</code>; I could not see how to get there from here. So I went to run some errands, and a solution appeared (as happens from time to time).</p>
+<p>The problem (I think) is that the API to the <code>knn()</code> function is different than for the <code>lm()</code> function. My solution is to back-up, and to write a function to wrap to the <code>knn()</code> function so that the API will be “close enough”. As I am starting to learn, “write a function” seems to be the way out of a <em>lot</em> of R pickles (and into others).</p>
 <p>To act like <code>lm()</code>, we need to keep the target variable in a data-frame alongside the predictor variables. So let’s do that.</p>
 <pre class="r"><code>caravan_standard_new &lt;- 
   caravan %&gt;%
