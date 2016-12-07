@@ -31,6 +31,7 @@ right:
     menu:
       - text: "vembedr"
       - text: "bsplus"
+        href: http://ijlyttle.github.io/bsplus/
       - text: "shinypod"
       - text: "humidr"
       - text: "groundTemp"
