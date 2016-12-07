@@ -60,7 +60,7 @@ Using this dataframe, we can evaluate our quadratic model for each member of `st
 
 ```{r}
 fn_model <- function(data){
-  lm(y ~ poly(x, 2), data = data)
+  lm(y ~ poly(x, 2, raw = TRUE), data = data)
 }
 
 df_regression_bootstrap_model <- 
@@ -97,7 +97,11 @@ df_regression_bootstrap_param_mean <-
   print()
 ```
 
+I would have hoped that the estimate means would be closer to the true values, but I have to temper my disappontment by recognizing my ignorance of the sublties of bootstrapping.
+
 Note to self - I think the `poly()` function uses orthogonal polynomials, so I'd like to find out how to transform these coefficient estimates into coefficients that multiply $(1, x, x^2)$. I know it's something simple - just to sit down and do it.
+
+Another note - Jenny Bryan pointed out that by using `poly(..., raw = TRUE)`, we get around this problem. As a result, the coefficent problem is solved and I am further in her debt :).
 
 There are two ways we can further investigate the significance of each term - visually, and to make a table of the proportion of bootstrap models where the sign of the parameter is different from the sign of the mean.
 
@@ -178,4 +182,4 @@ ggplot(data = df_regression, mapping = aes(x = x, y = y)) +
   geom_point(data = df_regression, alpha = 0.5) 
 ```
 
-To my eye, it seems that the "truth" function does not intersect the area occupied by bootstrap models as well as I would like. It could be that I don't understand bootstrapping as well as I should.
+To my eye, it seems that the "truth" function does not intersect the area occupied by bootstrap models as well as I would like. Again, it could be that I don't understand bootstrapping as well as I should.
